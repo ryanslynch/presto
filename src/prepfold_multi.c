@@ -27,7 +27,6 @@
 #include "prepfold_cmd.h"
 #include "backend_common.h"
 #include "mask.h"
-#include "presto.h"
 
 /* RAWDATA: same macro as in prepfold.c */
 #define RAWDATA (cmd->filterbankP || cmd->psrfitsP)
@@ -96,19 +95,6 @@ static cand_params *parse_candlist(const char *filename, int *ncands_out)
 /* fold_candidate() calls close_rawfiles(s) before returning.  We must */
 /* reopen the raw data files before the next candidate.                 */
 /* ------------------------------------------------------------------ */
-
-static void reopen_rawfiles(struct spectra_info *s, int insubs)
-{
-    int ii;
-    if (s->datatype == PSRFITS || s->datatype == SIGPROCFB) {
-        read_rawdata_files(s);
-    } else if (insubs) {
-        for (ii = 0; ii < s->num_files; ii++)
-            s->files[ii] = chkfopen(s->filenames[ii], "rb");
-    } else {
-        s->files[0] = chkfopen(s->filenames[0], "rb");
-    }
-}
 
 /* ------------------------------------------------------------------ */
 /* main                                                                 */
@@ -791,7 +777,8 @@ int main(int argc, char *argv[])
         double *topotimes   = ctx.topotimes;
         double *bestprof    = ctx.bestprof;
         float  *ppdot       = ctx.ppdot;
-        foldstats beststats = ctx.beststats;
+        foldstats beststats;
+        beststats = ctx.beststats;
 
         /* Store for summary table — indexed by ic, no race condition */
         best_redchi[ic] = beststats.redchi;
