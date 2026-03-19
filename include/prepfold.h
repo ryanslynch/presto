@@ -115,6 +115,9 @@ typedef struct FOLD_CONTEXT {
     foldstats beststats;        /* statistics for best fold */
 } fold_context;
 
+/* File-scope forward declaration so struct s_Cmdline * in the parameter list
+ * below refers to the file-scope tag, not a prototype-scope (invisible) tag. */
+struct s_Cmdline;
 int fold_candidate(fold_context *ctx, prepfoldinfo *search_out, struct s_Cmdline *cmd,
                    const char *outfilenm, const char *plotfilenm);
 /* Extract fold_candidate from prepfold.c main() lines ~596-1689.       */
