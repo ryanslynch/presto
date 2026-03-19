@@ -1,3 +1,6 @@
+#ifndef PREPFOLD_H
+#define PREPFOLD_H
+
 #include <ctype.h>
 #include "presto.h"
 #include "mask.h"
@@ -222,3 +225,5 @@ float estimate_offpulse_redchi2(double *inprofs, foldstats *stats,
 // inverse of the average of the off-pulse reduced-chi^2 (i.e. the
 // correction factor).  dofeff is the effective number of DOF as
 // returned by DOF_corr().
+
+#endif /* PREPFOLD_H */

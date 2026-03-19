@@ -1,3 +1,6 @@
+#ifndef BACKEND_COMMON_H
+#define BACKEND_COMMON_H
+
 #include "fitsio.h"
 #include "mask.h"
 #include "makeinf.h"
@@ -110,3 +113,5 @@ int *get_ignorechans(char *ignorechans_str, int minchan, int maxchan, int *num_i
 
 /* zerodm.c */
 void remove_zerodm(float *fdata, struct spectra_info *s);
+
+#endif /* BACKEND_COMMON_H */
