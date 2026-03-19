@@ -1190,6 +1190,7 @@ int fold_candidate(fold_context *ctx, prepfoldinfo *search_out, struct s_Cmdline
  * The main program
  */
 
+#ifndef PREPFOLD_MULTI_BUILD
 int main(int argc, char *argv[])
 {
     FILE *filemarker;
@@ -1966,3 +1967,4 @@ int main(int argc, char *argv[])
     printf("Done.\n\n");
     return (0);
 }
+#endif /* PREPFOLD_MULTI_BUILD */
