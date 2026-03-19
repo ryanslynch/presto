@@ -227,7 +227,7 @@ int main(int argc, char *argv[])
 
 #ifdef _OPENMP
     int maxcpus = omp_get_num_procs();
-    int nthreads = (ncpus_manual > 0) ? MIN(ncpus_manual, maxcpus) : maxcpus;
+    int nthreads = (ncpus_manual > 0) ? (ncpus_manual < maxcpus ? ncpus_manual : maxcpus) : maxcpus;
     omp_set_dynamic(0);
     omp_set_num_threads(nthreads);
     printf("Using %d of %d available CPUs.\n", nthreads, maxcpus);
