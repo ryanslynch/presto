@@ -7,13 +7,18 @@
 #define DEBUG_OUT 1
 
 #ifdef _OPENMP
-/* Each thread folds a different candidate with its own private FITS handle.
- * All read-position and buffer state must be thread-local so concurrent
- * fold_candidate() calls do not corrupt each other's file positions. */
+/* Per-thread file-position trackers and raw I/O scratch buffers.
+ * Each outer thread folds a different candidate with its own FITS handle,
+ * so these must be thread-local to avoid corrupting each other's positions.
+ * scales/offsets/weights are per-subint calibration arrays; they are NOT
+ * thread-local because they appear in inner shared() clauses and are
+ * effectively per-outer-thread (inner parallel regions are serialised by
+ * omp_set_max_active_levels(1) in prepfold_multi). */
 static __thread unsigned char *cdatabuffer;
-static __thread float *fdatabuffer, *offsets, *scales, *weights;
+static __thread float *fdatabuffer;
 static __thread int cur_file = 0, cur_subint = 1, numbuffered = 0, offs_sub_are_zero = 0;
 static __thread long long cur_spec = 0, new_spec = 0;
+static __thread float *offsets, *scales, *weights;
 #else
 static unsigned char *cdatabuffer;
 static float *fdatabuffer, *offsets, *scales, *weights;
@@ -966,7 +971,7 @@ void get_PSRFITS_subint(float *fdata, unsigned char *cdata, struct spectra_info 
             const int idx = (s->use_poln - 1) * s->num_channels;
             if (s->bits_per_sample == 16) {
 #ifdef _OPENMP
-#pragma omp parallel for shared(s,cdata,fdata,scales,offsets,weights)
+#pragma omp parallel for shared(s,cdata,fdata)
 #endif
                 for (ii = 0; ii < s->spectra_per_subint; ii++) {
                     int jj;
@@ -980,7 +985,7 @@ void get_PSRFITS_subint(float *fdata, unsigned char *cdata, struct spectra_info 
                 }
             } else if (s->bits_per_sample == 32) {
 #ifdef _OPENMP
-#pragma omp parallel for shared(s,cdata,fdata,scales,offsets,weights)
+#pragma omp parallel for shared(s,cdata,fdata)
 #endif
                 for (ii = 0; ii < s->spectra_per_subint; ii++) {
                     int jj;
@@ -995,7 +1000,7 @@ void get_PSRFITS_subint(float *fdata, unsigned char *cdata, struct spectra_info 
                 }
             } else {
 #ifdef _OPENMP
-#pragma omp parallel for shared(s,cdata,fdata,scales,offsets,weights)
+#pragma omp parallel for shared(s,cdata,fdata)
 #endif
                 for (ii = 0; ii < s->spectra_per_subint; ii++) {
                     int jj;
@@ -1012,7 +1017,7 @@ void get_PSRFITS_subint(float *fdata, unsigned char *cdata, struct spectra_info 
             const int idx = s->num_channels;
             if (s->bits_per_sample == 16) {
 #ifdef _OPENMP
-#pragma omp parallel for shared(s,cdata,fdata,scales,offsets,weights)
+#pragma omp parallel for shared(s,cdata,fdata)
 #endif
                 for (ii = 0; ii < s->spectra_per_subint; ii++) {
                     int jj;
@@ -1031,7 +1036,7 @@ void get_PSRFITS_subint(float *fdata, unsigned char *cdata, struct spectra_info 
                 }
             } else if (s->bits_per_sample == 32) {
 #ifdef _OPENMP
-#pragma omp parallel for shared(s,cdata,fdata,scales,offsets,weights)
+#pragma omp parallel for shared(s,cdata,fdata)
 #endif
                 for (ii = 0; ii < s->spectra_per_subint; ii++) {
                     int jj;
@@ -1051,7 +1056,7 @@ void get_PSRFITS_subint(float *fdata, unsigned char *cdata, struct spectra_info 
                 }
             } else {
 #ifdef _OPENMP
-#pragma omp parallel for shared(s,cdata,fdata,scales,offsets,weights)
+#pragma omp parallel for shared(s,cdata,fdata)
 #endif
                 for (ii = 0; ii < s->spectra_per_subint; ii++) {
                     int jj;
@@ -1072,7 +1077,7 @@ void get_PSRFITS_subint(float *fdata, unsigned char *cdata, struct spectra_info 
     } else {                    // This is for normal single-polarization data
         if (s->bits_per_sample == 16) {
 #ifdef _OPENMP
-#pragma omp parallel for default(none) shared(s,cdata,fdata,scales,offsets,weights)
+#pragma omp parallel for default(none) shared(s,cdata,fdata)
 #endif
             for (ii = 0; ii < s->spectra_per_subint; ii++) {
                 int jj;
@@ -1084,7 +1089,7 @@ void get_PSRFITS_subint(float *fdata, unsigned char *cdata, struct spectra_info 
             }
         } else if (s->bits_per_sample == 32) {
 #ifdef _OPENMP
-#pragma omp parallel for default(none) shared(s,cdata,fdata,scales,offsets,weights)
+#pragma omp parallel for default(none) shared(s,cdata,fdata)
 #endif
             for (ii = 0; ii < s->spectra_per_subint; ii++) {
                 int jj;
@@ -1096,7 +1101,7 @@ void get_PSRFITS_subint(float *fdata, unsigned char *cdata, struct spectra_info 
             }
         } else {
 #ifdef _OPENMP
-#pragma omp parallel for default(none) shared(s,cdata,fdata,scales,offsets,weights)
+#pragma omp parallel for default(none) shared(s,cdata,fdata)
 #endif
             for (ii = 0; ii < s->spectra_per_subint; ii++) {
                 int jj;
