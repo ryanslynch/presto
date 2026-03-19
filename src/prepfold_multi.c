@@ -196,15 +196,19 @@ int main(int argc, char *argv[])
     s.remove_zerodm  = (cmd->zerodmP)    ? 1 : 0;
 
 #ifdef _OPENMP
-    int nthreads = 1;
-    if (cmd->ncpusP && cmd->ncpus > 1) {
-        int maxcpus = omp_get_num_procs();
+    int maxcpus = omp_get_num_procs();
+    int nthreads;
+    if (cmd->ncpusP && cmd->ncpus > 0) {
         nthreads = (cmd->ncpus <= maxcpus) ? cmd->ncpus : maxcpus;
-        omp_set_dynamic(0);
-        omp_set_num_threads(nthreads);
     } else {
-        omp_set_num_threads(1);
+        /* Default: use all available cores (unlike prepfold which defaults
+         * to 1).  prepfold_multi's primary purpose is parallel folding. */
+        nthreads = maxcpus;
     }
+    omp_set_dynamic(0);
+    omp_set_num_threads(nthreads);
+#else
+    int nthreads = 1;
 #endif
 
     if (cmd->noclipP) {
