@@ -643,9 +643,15 @@ int fold_candidate(fold_context *ctx, prepfoldinfo *search_out, struct s_Cmdline
             for (ii = 0; ii < numbarypts; ii++)
                 topotimes[ii] = search.tepoch + (double) ii *TDT / SECPERDAY;
 
-            /* Call TEMPO for the barycentering */
+            /* Call TEMPO for the barycentering.
+             * TEMPO writes temp files (resid2.tmp, tempo.lis, etc.) in the
+             * current directory, so concurrent calls would collide.
+             * Serialise with a critical section when running under OpenMP. */
 
             printf("\nGenerating barycentric corrections...\n");
+#ifdef _OPENMP
+#pragma omp critical(barycenter)
+#endif
             barycenter(topotimes, barytimes, voverc, numbarypts,
                        rastring, decstring, obs, ephem);
 
