@@ -180,7 +180,8 @@ int main(int argc, char *argv[])
      * ---------------------------------------------------------------- */
 
     cmd = parseCmdline(fargc, fargv);
-    free(fargv);
+    /* Do NOT free(fargv) here: parseCmdline sets cmd->argv = fargv+1,
+     * so fargv must remain valid for the lifetime of cmd. */
 
     spectra_info_set_defaults(&s);
     s.filenames = cmd->argv;
