@@ -473,8 +473,13 @@ int read_rawblocks(float *fdata, int numsubints, struct spectra_info *s,
 {
     long long ii, loffset;
     int retval = 0, gotblock = 0, pad = 0, numpad = 0, numvals;
+#ifdef _OPENMP
+    static __thread float *rawdata = NULL;
+    static __thread int firsttime = 1;
+#else
     static float *rawdata = NULL;
     static int firsttime = 1;
+#endif
 
     numvals = s->spectra_per_subint * s->num_channels;
     if (firsttime) {
@@ -528,10 +533,17 @@ int read_psrdata(float *fdata, int numspect, struct spectra_info *s,
     int numread = 0;
     double starttime = 0.0;
     long long ii, jj, templen, loffset;
+#ifdef _OPENMP
+    static __thread float *tmpswap, *rawdata1, *rawdata2;
+    static __thread float *currentdata, *lastdata;
+    static __thread int firsttime = 1, numsubints = 1, allocd = 0, mask = 0;
+    static __thread double duration = 0.0;
+#else
     static float *tmpswap, *rawdata1, *rawdata2;
     static float *currentdata, *lastdata;
     static int firsttime = 1, numsubints = 1, allocd = 0, mask = 0;
     static double duration = 0.0;
+#endif
 
     *nummasked = 0;
     if (firsttime) {
@@ -676,10 +688,17 @@ int prep_subbands(float *fdata, float *rawdata, int *delays, int numsubbands,
 {
     int ii, jj, offset;
     double starttime = 0.0;
+#ifdef _OPENMP
+    static __thread float *tmpswap, *rawdata1, *rawdata2;
+    static __thread float *currentdata, *lastdata;
+    static __thread int firsttime = 1, mask = 0;
+    static __thread fftwf_plan tplan1, tplan2;
+#else
     static float *tmpswap, *rawdata1, *rawdata2;
     static float *currentdata, *lastdata;
     static int firsttime = 1, mask = 0;
     static fftwf_plan tplan1, tplan2;
+#endif
 
     *nummasked = 0;
     if (firsttime) {
@@ -690,9 +709,17 @@ int prep_subbands(float *fdata, float *rawdata, int *delays, int numsubbands,
         currentdata = rawdata1;
         lastdata = rawdata2;
         // Make plans to do fast transposes using FFTW
+        // fftwf_plan_* is not thread-safe; serialize plan creation
+#ifdef _OPENMP
+        #pragma omp critical(fftw_plan)
+        {
+#endif
         tplan1 = plan_transpose(s->spectra_per_subint, s->num_channels,
                                 currentdata, currentdata);
         tplan2 = plan_transpose(numsubbands, s->spectra_per_subint, fdata, fdata);
+#ifdef _OPENMP
+        }
+#endif
     }
 
     /* Read and de-disperse */
