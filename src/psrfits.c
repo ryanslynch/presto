@@ -6,10 +6,20 @@
 
 #define DEBUG_OUT 1
 
+#ifdef _OPENMP
+/* Each thread folds a different candidate with its own private FITS handle.
+ * All read-position and buffer state must be thread-local so concurrent
+ * fold_candidate() calls do not corrupt each other's file positions. */
+static __thread unsigned char *cdatabuffer;
+static __thread float *fdatabuffer, *offsets, *scales, *weights;
+static __thread int cur_file = 0, cur_subint = 1, numbuffered = 0, offs_sub_are_zero = 0;
+static __thread long long cur_spec = 0, new_spec = 0;
+#else
 static unsigned char *cdatabuffer;
 static float *fdatabuffer, *offsets, *scales, *weights;
 static int cur_file = 0, cur_subint = 1, numbuffered = 0, offs_sub_are_zero = 0;
 static long long cur_spec = 0, new_spec = 0;
+#endif
 
 extern double slaCldj(int iy, int im, int id, int *j);
 extern void add_padding(float *fdata, float *padding, int numchan, int numtopad);

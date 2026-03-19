@@ -2,10 +2,17 @@
 #include "mask.h"
 #include "sigproc_fb.h"
 
+#ifdef _OPENMP
+static __thread unsigned char *cdatabuffer;
+static __thread float *fdatabuffer;
+static __thread int currentfile = 0, currentblock = 0;
+static __thread int numbuffered = 0, numpadded = 0;
+#else
 static unsigned char *cdatabuffer;
 static float *fdatabuffer;
 static int currentfile = 0, currentblock = 0;
 static int numbuffered = 0, numpadded = 0;
+#endif
 
 extern void add_padding(float *fdata, float *padding, int numchan, int numtopad);
 
