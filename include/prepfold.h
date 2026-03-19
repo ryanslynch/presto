@@ -5,7 +5,11 @@
 #include "presto.h"
 #include "mask.h"
 #include "backend_common.h"
-#include "prepfold_cmd.h"
+/* prepfold_cmd.h is intentionally NOT included here: its Cmdline typedef
+ * (struct s_Cmdline) conflicts with the identically-named typedef in
+ * show_pfd_cmd.h and other per-tool command-line headers.  Callers that
+ * need the full Cmdline definition must include prepfold_cmd.h themselves
+ * before including prepfold.h, or just use struct s_Cmdline* directly. */
 
 /* This causes the barycentric motion to be calculated once per second */
 
@@ -111,7 +115,7 @@ typedef struct FOLD_CONTEXT {
     foldstats beststats;        /* statistics for best fold */
 } fold_context;
 
-int fold_candidate(fold_context *ctx, prepfoldinfo *search_out, Cmdline *cmd,
+int fold_candidate(fold_context *ctx, prepfoldinfo *search_out, struct s_Cmdline *cmd,
                    const char *outfilenm, const char *plotfilenm);
 /* Extract fold_candidate from prepfold.c main() lines ~596-1689.       */
 /* ctx: shared read-only inputs; search_out: per-candidate accumulator;  */

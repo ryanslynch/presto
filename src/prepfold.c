@@ -20,7 +20,7 @@ extern char *make_polycos(char *parfilenm, infodata * idata, char *polycofilenm,
 extern int *ranges_to_ivect(char *str, int minval, int maxval, int *numvals);
 void set_posn(prepfoldinfo * in, infodata * idata);
 
-int fold_candidate(fold_context *ctx, prepfoldinfo *search_out, Cmdline *cmd,
+int fold_candidate(fold_context *ctx, prepfoldinfo *search_out, struct s_Cmdline *cmd,
                    const char *outfilenm, const char *plotfilenm)
 {
     /* Unpack context inputs into local aliases */
