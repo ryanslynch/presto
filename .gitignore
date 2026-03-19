@@ -19,3 +19,10 @@ dist/
 .vscode/
 build/
 examplescripts/ppdot_*.png
+.claude/
+MULTI_CANDIDATE_FOLDING.md
+PHASE1_SUMMARY.md
+PHASE2_SUMMARY.md
+PHASE3_SUMMARY.md
+PHASE4_SUMMARY.md
+PLAN.md

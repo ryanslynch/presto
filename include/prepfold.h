@@ -1,6 +1,8 @@
 #include <ctype.h>
 #include "presto.h"
 #include "mask.h"
+#include "backend_common.h"
+#include "prepfold_cmd.h"
 
 /* This causes the barycentric motion to be calculated once per second */
 
@@ -66,6 +68,53 @@ typedef struct PREPFOLDINFO {
   position fold;      /* f, fd, and fdd used to fold the initial data */
   orbitparams orb;    /* Barycentric orbital parameters used in folds */
 } prepfoldinfo;
+
+/* Shared observation context passed into fold_candidate() */
+
+typedef struct FOLD_CONTEXT {
+    /* Shared inputs (set by main, read-only in fold_candidate) */
+    struct spectra_info *s;     /* file handles + metadata */
+    infodata *idata;            /* observation info (.inf) */
+    int    numchan;             /* number of channels */
+    int    ptsperrec;           /* samples per raw record */
+    double recdt;               /* duration of one raw record (s) */
+    double startTday;           /* start offset from MJD epoch (days) */
+    long long lorec;            /* first record to fold */
+    long long hirec;            /* last record to fold */
+    long long numrec;           /* number of records to fold */
+    long   reads_per_part;      /* reads per sub-integration */
+    long   worklen;             /* samples per read */
+    int    insubs;              /* data is in subband files */
+    int    useshorts;           /* data is 16-bit shorts */
+    int    good_padvals;        /* padding values are valid */
+    mask  *obsmask;             /* RFI mask */
+    int   *maskchans;           /* masked channel indices */
+    int    nummasked;           /* number of masked channels */
+    char   rastring[50];        /* RA string for barycenter */
+    char   decstring[50];       /* DEC string for barycenter */
+    char   obs[3];              /* TEMPO observatory code */
+    char   ephem[6];            /* Solar system ephemeris (e.g. DE405) */
+    plotflags *pflags;          /* plot flags (nosearch may be updated) */
+    double *events;             /* event times array (NULL if not eventsP) */
+    int    numevents;           /* number of events */
+    double T;                   /* total observation time (s) */
+    double N;                   /* total number of samples (may change for events) */
+    /* Outputs (set by fold_candidate, used by post-fold code in main) */
+    double *barytimes;          /* barycentric times array (caller must free) */
+    double *topotimes;          /* topocentric times array (caller must free) */
+    int    numbarypts;          /* number of bary/topo time points */
+    double *bestprof;           /* best profile (caller must free) */
+    float  *ppdot;              /* P-Pdot plane (caller must free, may be NULL) */
+    foldstats beststats;        /* statistics for best fold */
+} fold_context;
+
+int fold_candidate(fold_context *ctx, prepfoldinfo *search_out, Cmdline *cmd,
+                   const char *outfilenm, const char *plotfilenm);
+/* Extract fold_candidate from prepfold.c main() lines ~596-1689.       */
+/* ctx: shared read-only inputs; search_out: per-candidate accumulator;  */
+/* cmd: per-candidate parameters; outfilenm: base name for polycos file. */
+/* plotfilenm: plot output filename (used for one printf).               */
+/* Returns 0 on success.                                                 */
 
 /* Some function definitions */
 

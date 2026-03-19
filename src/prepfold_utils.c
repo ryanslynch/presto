@@ -189,7 +189,11 @@ int read_PRESTO_subbands(FILE * infiles[], int numfiles, float *subbanddata,
 {
     int ii, jj, index, numread = 0;
     short subsdata[SUBSBLOCKLEN];
+#ifdef _OPENMP
+    static __thread int currentblock = 0;
+#else
     static int currentblock = 0;
+#endif
 
     /* Read the data */
     for (ii = 0; ii < numfiles; ii++) {

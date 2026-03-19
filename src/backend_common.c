@@ -5,7 +5,11 @@
 #include "misc_utils.h"
 #include "fftw3.h"
 
+#ifdef _OPENMP
+static __thread long long currentspectra = 0;
+#else
 static long long currentspectra = 0;
+#endif
 static int using_MPI = 0;
 
 #define SWAP(a,b) tmpswap=(a);(a)=(b);(b)=tmpswap;
@@ -774,8 +778,13 @@ int read_subbands(float *fdata, int *delays, int numsubbands,
 // If 'transpose'==0, the data will be kept in time order instead of
 // arranged by subband as above.
 {
+#ifdef _OPENMP
+    static __thread int firsttime = 1;
+    static __thread float *frawdata;
+#else
     static int firsttime = 1;
     static float *frawdata;
+#endif
 
     if (firsttime) {
         // Check to make sure there isn't more dispersion across a
