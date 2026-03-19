@@ -584,7 +584,34 @@ int main(int argc, char *argv[])
     }
 
     /* ----------------------------------------------------------------
-     * 6.  Summary storage
+     * 6.  Pre-compute barycentric corrections (once, shared by all candidates)
+     * ---------------------------------------------------------------- */
+
+    double *pre_barytimes = NULL, *pre_topotimes = NULL;
+    int    pre_numbarypts = 0;
+    double pre_avgvoverc  = 0.0;
+
+    if ((RAWDATA || insubs) && !cmd->topoP && !cmd->polycofileP) {
+        int jj;
+        pre_numbarypts = (int)(T / TDT + 10);
+        pre_topotimes  = gen_dvect(pre_numbarypts);
+        pre_barytimes  = gen_dvect(pre_numbarypts);
+        double *pre_voverc = gen_dvect(pre_numbarypts);
+        for (jj = 0; jj < pre_numbarypts; jj++)
+            pre_topotimes[jj] = tepoch_shared + (double) jj * TDT / SECPERDAY;
+        printf("Generating barycentric corrections (shared across all candidates)...\n");
+        barycenter(pre_topotimes, pre_barytimes, pre_voverc,
+                   pre_numbarypts, rastring, decstring, obs, ephem);
+        for (jj = 0; jj < pre_numbarypts - 1; jj++)
+            pre_avgvoverc += pre_voverc[jj];
+        pre_avgvoverc /= (pre_numbarypts - 1.0);
+        vect_free(pre_voverc);
+        printf("The average topocentric velocity is %.6g (units of c).\n\n",
+               pre_avgvoverc);
+    }
+
+    /* ----------------------------------------------------------------
+     * 7.  Summary storage
      * ---------------------------------------------------------------- */
 
     double *best_redchi = (double *) calloc(ncands, sizeof(double));
@@ -768,6 +795,10 @@ int main(int argc, char *argv[])
         ctx.numevents    = 0;
         ctx.T            = T;
         ctx.N            = N;
+        ctx.pre_barytimes  = pre_barytimes;   /* shared; NULL → fold_candidate calls TEMPO */
+        ctx.pre_topotimes  = pre_topotimes;
+        ctx.pre_numbarypts = pre_numbarypts;
+        ctx.pre_avgvoverc  = pre_avgvoverc;
         ctx.barytimes    = NULL;
         ctx.topotimes    = NULL;
         ctx.numbarypts   = 0;
@@ -826,6 +857,10 @@ int main(int argc, char *argv[])
         free(outfilenm);
         free(plotfilenm);
     }
+
+    /* Free the shared pre-computed barycentric arrays (allocated once above) */
+    vect_free(pre_barytimes);
+    vect_free(pre_topotimes);
 
     /* ----------------------------------------------------------------
      * 8.  Summary table

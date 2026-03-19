@@ -106,9 +106,17 @@ typedef struct FOLD_CONTEXT {
     int    numevents;           /* number of events */
     double T;                   /* total observation time (s) */
     double N;                   /* total number of samples (may change for events) */
+    /* Pre-computed barycentric corrections (optional, shared across candidates).
+     * When pre_barytimes != NULL, fold_candidate skips calling TEMPO and uses
+     * these arrays directly.  Ownership remains with the caller; fold_candidate
+     * will NOT free them and will NOT copy them into barytimes/topotimes. */
+    double *pre_barytimes;      /* shared bary times (NULL = let fold_candidate call TEMPO) */
+    double *pre_topotimes;      /* shared topo times */
+    int    pre_numbarypts;      /* length of pre_barytimes / pre_topotimes */
+    double pre_avgvoverc;       /* pre-computed average topocentric velocity */
     /* Outputs (set by fold_candidate, used by post-fold code in main) */
-    double *barytimes;          /* barycentric times array (caller must free) */
-    double *topotimes;          /* topocentric times array (caller must free) */
+    double *barytimes;          /* barycentric times array (caller must free; NULL if pre-computed) */
+    double *topotimes;          /* topocentric times array (caller must free; NULL if pre-computed) */
     int    numbarypts;          /* number of bary/topo time points */
     double *bestprof;           /* best profile (caller must free) */
     float  *ppdot;              /* P-Pdot plane (caller must free, may be NULL) */

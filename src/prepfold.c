@@ -629,40 +629,44 @@ int fold_candidate(fold_context *ctx, prepfoldinfo *search_out, struct s_Cmdline
             foldfdd = fdd;
             orig_foldf = foldf;
         } else {                /* Correct our fold parameters if we are barycentering */
-            double *voverc;
 
-            /* The number of topo to bary points to generate with TEMPO */
+            if (ctx->pre_barytimes != NULL) {
+                /* Use pre-computed shared corrections — no TEMPO call needed */
+                numbarypts = ctx->pre_numbarypts;
+                barytimes  = ctx->pre_barytimes;   /* shared, caller owns */
+                topotimes  = ctx->pre_topotimes;   /* shared, caller owns */
+                search.avgvoverc = ctx->pre_avgvoverc;
+                printf("\nUsing pre-computed barycentric corrections.\n");
+                printf("The average topocentric velocity is %.6g (units of c).\n\n",
+                       search.avgvoverc);
+            } else {
+                double *voverc;
 
-            numbarypts = T / TDT + 10;
-            barytimes = gen_dvect(numbarypts);
-            topotimes = gen_dvect(numbarypts);
-            voverc = gen_dvect(numbarypts);
+                /* The number of topo to bary points to generate with TEMPO */
 
-            /* topocentric times in days from data start */
+                numbarypts = T / TDT + 10;
+                barytimes = gen_dvect(numbarypts);
+                topotimes = gen_dvect(numbarypts);
+                voverc = gen_dvect(numbarypts);
 
-            for (ii = 0; ii < numbarypts; ii++)
-                topotimes[ii] = search.tepoch + (double) ii *TDT / SECPERDAY;
+                /* topocentric times in days from data start */
 
-            /* Call TEMPO for the barycentering.
-             * TEMPO writes temp files (resid2.tmp, tempo.lis, etc.) in the
-             * current directory, so concurrent calls would collide.
-             * Serialise with a critical section when running under OpenMP. */
+                for (ii = 0; ii < numbarypts; ii++)
+                    topotimes[ii] = search.tepoch + (double) ii * TDT / SECPERDAY;
 
-            printf("\nGenerating barycentric corrections...\n");
-#ifdef _OPENMP
-#pragma omp critical(barycenter)
-#endif
-            barycenter(topotimes, barytimes, voverc, numbarypts,
-                       rastring, decstring, obs, ephem);
+                printf("\nGenerating barycentric corrections...\n");
+                barycenter(topotimes, barytimes, voverc, numbarypts,
+                           rastring, decstring, obs, ephem);
 
-            /* Determine the avg v/c of the Earth's motion during the obs */
+                /* Determine the avg v/c of the Earth's motion during the obs */
 
-            for (ii = 0; ii < numbarypts - 1; ii++)
-                search.avgvoverc += voverc[ii];
-            search.avgvoverc /= (numbarypts - 1.0);
-            vect_free(voverc);
-            printf("The average topocentric velocity is %.6g (units of c).\n\n",
-                   search.avgvoverc);
+                for (ii = 0; ii < numbarypts - 1; ii++)
+                    search.avgvoverc += voverc[ii];
+                search.avgvoverc /= (numbarypts - 1.0);
+                vect_free(voverc);
+                printf("The average topocentric velocity is %.6g (units of c).\n\n",
+                       search.avgvoverc);
+            }
             printf("Barycentric folding frequency    (hz)  =  %-.12g\n", f);
             printf("Barycentric folding f-dot      (hz/s)  =  %-.8g\n", fd);
             printf("Barycentric folding f-dotdot (hz/s^2)  =  %-.8g\n", fdd);
@@ -1171,9 +1175,14 @@ int fold_candidate(fold_context *ctx, prepfoldinfo *search_out, struct s_Cmdline
 
     /* Sync outputs back to caller */
     ctx->N = N;
-    ctx->barytimes = barytimes;
-    ctx->topotimes = topotimes;
-    ctx->numbarypts = numbarypts;
+    /* Pass barytimes/topotimes ownership only when fold_candidate allocated
+     * them.  If pre_barytimes was set, the shared arrays stay with the caller
+     * and ctx->barytimes/topotimes remain NULL (vect_free(NULL) is a no-op). */
+    if (ctx->pre_barytimes == NULL) {
+        ctx->barytimes  = barytimes;
+        ctx->topotimes  = topotimes;
+        ctx->numbarypts = numbarypts;
+    }
     ctx->bestprof = bestprof;
     ctx->ppdot = ppdot;
     ctx->beststats = beststats;
