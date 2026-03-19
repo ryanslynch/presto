@@ -36,10 +36,13 @@
 /* ------------------------------------------------------------------ */
 
 typedef struct {
-    double p0;
-    double pdot;
+    double p0;      /* period (s) — set if is_freq==0 */
+    double pdot;    /* period derivative (s/s) */
     double dm;
     char   label[128];
+    int    is_freq; /* 1 = values are f0(Hz)/fdot(Hz/s); 0 = p0/pdot */
+    double f0;      /* frequency (Hz) — set if is_freq==1 */
+    double fdot;    /* frequency derivative (Hz/s) */
 } cand_params;
 
 static int cmp_by_dm(const void *a, const void *b)
@@ -49,7 +52,8 @@ static int cmp_by_dm(const void *a, const void *b)
     return (da > db) - (da < db);
 }
 
-static cand_params *parse_candlist(const char *filename, int *ncands_out)
+/* freq_mode=1: values are f0(Hz), fdot(Hz/s), DM; freq_mode=0: p0(s), pdot(s/s), DM */
+static cand_params *parse_candlist(const char *filename, int freq_mode, int *ncands_out)
 {
     FILE *f = fopen(filename, "r");
     if (!f) {
@@ -67,14 +71,28 @@ static cand_params *parse_candlist(const char *filename, int *ncands_out)
         if (*p == '#' || *p == '\n' || *p == '\r' || *p == '\0')
             continue;
         cand_params c;
-        c.pdot = 0.0;
+        c.pdot  = 0.0;
+        c.fdot  = 0.0;
         c.label[0] = '\0';
-        int n = sscanf(p, "%lf %lf %lf %127s", &c.p0, &c.pdot, &c.dm, c.label);
+        c.is_freq = freq_mode;
+        double v0, v1;
+        int n = sscanf(p, "%lf %lf %lf %127s", &v0, &v1, &c.dm, c.label);
         if (n < 3) {
             fprintf(stderr,
                     "Warning: skipping malformed line %d in '%s'\n",
                     lineno, filename);
             continue;
+        }
+        if (freq_mode) {
+            c.f0   = v0;
+            c.fdot = v1;
+            c.p0   = (c.f0 > 0.0) ? 1.0 / c.f0 : 0.0;  /* for naming */
+            c.pdot = 0.0;
+        } else {
+            c.p0   = v0;
+            c.pdot = v1;
+            c.f0   = (c.p0 > 0.0) ? 1.0 / c.p0 : 0.0;
+            c.fdot = 0.0;
         }
         if (ncands == capacity) {
             capacity *= 2;
@@ -84,7 +102,8 @@ static cand_params *parse_candlist(const char *filename, int *ncands_out)
         cands[ncands++] = c;
     }
     fclose(f);
-    printf("Read %d candidates from '%s'\n\n", ncands, filename);
+    printf("Read %d candidates from '%s' (format: %s)\n\n",
+           ncands, filename, freq_mode ? "f0/fdot Hz" : "p0/pdot s");
     *ncands_out = ncands;
     return cands;
 }
@@ -114,6 +133,8 @@ int main(int argc, char *argv[])
     int noplots = 0;
     int nested_flag = 0;    /* --nested: enable Level 1 + Level 2 simultaneously */
     double dm_tol = 0.1;    /* reserved for future DM-dedup optimisation */
+    int use_period_format = 0;  /* 0 = f/fdot (default), 1 = p/pdot (-ppdot flag) */
+    int ncpus_manual = -1;  /* -1 = user did not specify -ncpus */
 
     /* Shared timing/geometry state */
     double recdt = 0.0, T = 0.0, N = 0.0, startTday = 0.0;
@@ -145,6 +166,12 @@ int main(int argc, char *argv[])
         } else if (strcmp(argv[ii], "-dm_tol") == 0 && ii + 1 < argc) {
             dm_tol = atof(argv[++ii]);
             (void) dm_tol;      /* suppress unused-variable warning for now */
+        } else if (strcmp(argv[ii], "-ppdot") == 0) {
+            use_period_format = 1;
+        } else if (strcmp(argv[ii], "-ncpus") == 0 && ii + 1 < argc) {
+            ncpus_manual = atoi(argv[ii + 1]);
+            fargv[fargc++] = argv[ii];       /* pass through to parseCmdline */
+            fargv[fargc++] = argv[++ii];
         } else {
             fargv[fargc++] = argv[ii];
         }
@@ -161,7 +188,10 @@ int main(int argc, char *argv[])
                 "[prepfold_options] rawfiles\n\n");
         fprintf(stderr,
                 "  -candlist <file>  "
-                "Candidate list (P0 Pdot DM [label] per line)\n");
+                "Candidate list (F0 Fdot DM [label] per line, Hz by default)\n");
+        fprintf(stderr,
+                "  -ppdot            "
+                "Interpret candidate list as P0(s) Pdot(s/s) DM instead of F0/Fdot\n");
         fprintf(stderr,
                 "  -noplots          "
                 "Skip PGPLOT output (write .pfd files only)\n");
@@ -197,16 +227,10 @@ int main(int argc, char *argv[])
 
 #ifdef _OPENMP
     int maxcpus = omp_get_num_procs();
-    int nthreads;
-    if (cmd->ncpusP && cmd->ncpus > 0) {
-        nthreads = (cmd->ncpus <= maxcpus) ? cmd->ncpus : maxcpus;
-    } else {
-        /* Default: use all available cores (unlike prepfold which defaults
-         * to 1).  prepfold_multi's primary purpose is parallel folding. */
-        nthreads = maxcpus;
-    }
+    int nthreads = (ncpus_manual > 0) ? MIN(ncpus_manual, maxcpus) : maxcpus;
     omp_set_dynamic(0);
     omp_set_num_threads(nthreads);
+    printf("Using %d of %d available CPUs.\n", nthreads, maxcpus);
 #else
     int nthreads = 1;
 #endif
@@ -507,7 +531,7 @@ int main(int argc, char *argv[])
      * ---------------------------------------------------------------- */
 
     int ncands = 0;
-    cand_params *cands = parse_candlist(candlist_file, &ncands);
+    cand_params *cands = parse_candlist(candlist_file, !use_period_format, &ncands);
     if (ncands == 0) {
         fprintf(stderr, "Error: no valid candidates found in '%s'\n",
                 candlist_file);
@@ -541,13 +565,13 @@ int main(int argc, char *argv[])
             use_parallel = (ncands > 1);
             printf("OpenMP: nested mode (%d threads, outer+inner).\n\n",
                    nthreads);
-        } else if (ncands < 5) {
-            /* Level 2 only: serial outer loop, parallel subbands */
+        } else if (ncands == 1) {
+            /* Single candidate: Level 2 (inner subband parallelism) */
             use_parallel = 0;
             printf("OpenMP: Level 2 (subband parallelism, %d threads).\n\n",
                    nthreads);
         } else {
-            /* Level 1: parallel outer loop, serial inner */
+            /* Multiple candidates: Level 1 (parallel outer loop) */
             omp_set_max_active_levels(1);
             use_parallel = 1;
             printf("OpenMP: Level 1 (candidate parallelism, %d threads"
@@ -684,16 +708,22 @@ int main(int argc, char *argv[])
 #endif
         {
             printf("\n--- Candidate %d / %d ---\n", ic + 1, ncands);
-            printf("  P0 = %.10g s  Pdot = %g s/s  DM = %.4f pc/cm^3\n",
-                   c->p0, c->pdot, c->dm);
+            if (c->is_freq)
+                printf("  F0 = %.10g Hz  Fdot = %g Hz/s  DM = %.4f pc/cm^3\n",
+                       c->f0, c->fdot, c->dm);
+            else
+                printf("  P0 = %.10g s  Pdot = %g s/s  DM = %.4f pc/cm^3\n",
+                       c->p0, c->pdot, c->dm);
         }
+
+        /* Per-candidate pflags copy — prevents race on nosearch flag */
+        plotflags pflags_cand = pflags;
 
         /* Build per-candidate Cmdline; leave shared options intact */
         Cmdline cmd_cand = *cmd;
-        cmd_cand.pP  = 1;  cmd_cand.p  = c->p0;
-        cmd_cand.pdP = 1;  cmd_cand.pd = c->pdot;
+        cmd_cand.noxwinP = 1;   /* suppress X window; write .pfd.ps only */
         cmd_cand.dmP = 1;  cmd_cand.dm = c->dm;
-        /* Disable source-name / accel-cand / timing overrides; we use -p */
+        /* Disable source-name / accel-cand / timing overrides */
         cmd_cand.psrnameP    = 0;
         cmd_cand.parnameP    = 0;
         cmd_cand.timingP     = 0;
@@ -701,12 +731,23 @@ int main(int argc, char *argv[])
         cmd_cand.rzwcandP    = 0;
         cmd_cand.polycofileP = 0;
         cmd_cand.binaryP     = 0;
-        cmd_cand.fP          = 0;
+        if (c->is_freq) {
+            cmd_cand.fP  = 1;  cmd_cand.f  = c->f0;
+            cmd_cand.fdP = 1;  cmd_cand.fd = c->fdot;
+            cmd_cand.pP  = 0;  cmd_cand.pdP = 0;
+        } else {
+            cmd_cand.pP  = 1;  cmd_cand.p  = c->p0;
+            cmd_cand.pdP = 1;  cmd_cand.pd = c->pdot;
+            cmd_cand.fP  = 0;  cmd_cand.fdP = 0;
+        }
 
         /* ---- Output filenames for this candidate ---- */
         char candnm[256];
         if (c->label[0]) {
             snprintf(candnm, sizeof(candnm), "%s", c->label);
+        } else if (c->is_freq) {
+            snprintf(candnm, sizeof(candnm), "Cand%04d_DM%.2f_F%.4fHz",
+                     ic + 1, c->dm, c->f0);
         } else {
             snprintf(candnm, sizeof(candnm), "Cand%04d_DM%.2f_P%.4fms",
                      ic + 1, c->dm, c->p0 * 1000.0);
@@ -734,6 +775,7 @@ int main(int argc, char *argv[])
 
         search.pgdev = (char *) calloc(slen + 8, sizeof(char));
         sprintf(search.pgdev, "%s/CPS", plotfilenm);
+        printf("  Plot output:  '%s'\n", plotfilenm);
 
         search.telescope = (char *) calloc(strlen(telescope_shared) + 1,
                                            sizeof(char));
@@ -790,7 +832,7 @@ int main(int argc, char *argv[])
         ctx.obs[sizeof(ctx.obs) - 1] = '\0';
         strncpy(ctx.ephem, ephem, sizeof(ctx.ephem) - 1);
         ctx.ephem[sizeof(ctx.ephem) - 1] = '\0';
-        ctx.pflags       = &pflags;
+        ctx.pflags       = &pflags_cand;
         ctx.events       = NULL;
         ctx.numevents    = 0;
         ctx.T            = T;
@@ -830,7 +872,7 @@ int main(int argc, char *argv[])
 #ifdef _OPENMP
 #pragma omp critical(pgplot)
 #endif
-            prepfold_plot(&search, &pflags, 0, ppdot);
+            prepfold_plot(&search, &pflags_cand, 0, ppdot);
         }
 
 #ifdef _OPENMP
