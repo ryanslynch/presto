@@ -61,7 +61,7 @@ int fold_candidate(fold_context *ctx, prepfoldinfo *search_out, Cmdline *cmd,
     double *barytimes = NULL, *topotimes = NULL, *bestprof = NULL;
     double *buffers, *phasesadded;
     char pname[30];
-    int info, binary = 0, numdelays = 0, flags = 1, padding = 0;
+    int info, binary = 0, numdelays = 0, numbarypts = 0, flags = 1, padding = 0;
     int arrayoffset = 0, polyco_index = 0;
     long ii = 0, jj, kk, numread = 0;
     long long totnumfolded = 0, numbinpoints = 0;
