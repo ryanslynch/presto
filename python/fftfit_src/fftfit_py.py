@@ -14,6 +14,8 @@ Public API mirrors the Fortran exactly, for drop-in use by get_TOAs.py / sum_pro
 import numpy as np
 from scipy.optimize import brentq
 
+import fftfit_aarchiba as _aarchiba
+
 TWOPI = 2.0 * np.pi
 
 
@@ -80,35 +82,12 @@ def _fccf(tmp, r):
     return shift * TWOPI / nprof
 
 
-def fftfit(prof, s, phi):
-    """Determine the shift between ``prof`` and a template, in the Fourier domain.
+def _classic_tau(tmp, r, ngood, nh):
+    """Find the shift tau (radians) by Taylor's coarse CCF + harmonic-continuation loop.
 
-    Faithful port of fftfit.f. ``s`` and ``phi`` are the template amplitude and phase
-    (as returned by :func:`cprof`, with ``phi`` optionally rotated as get_TOAs.py does).
-    Returns ``(shift, eshift, snr, esnr, b, errb, ngood)`` with ``shift``/``eshift`` in bins.
+    Returns tau, or None if the root cannot be bracketed (the ntries>100 bailout).
     """
-    prof = np.asarray(prof, dtype=np.float64)
-    s = np.asarray(s, dtype=np.float64)
-    phi = np.asarray(phi, dtype=np.float64)
-    nmax = len(prof)
-    nh = nmax // 2
-
-    # Number of "good" (significant) template harmonics: leading harmonics whose
-    # amplitude exceeds twice the mean of the upper half of the spectrum.
-    ave = 2.0 * np.sum(s[nh // 2:nh]) / nh
-    below = np.where(s[:nh] < ave)[0]
-    ngood = nh if below.size == 0 else int(below[0])
-
-    # Profile spectrum; form the cross terms.
-    _, p, theta = cprof(prof)
-    tmp = p * s
-    r = theta - phi
-    fac = nmax / TWOPI
-
     tau = _fccf(tmp, r)
-
-    # Continuation loop: progressively include more harmonics, re-solving
-    # dchisqr(tau)=0 each time, to home in on the global minimum.
     nsum0 = min(16, ngood // 4)
     for nsum in range(nsum0, ngood + 1):
         dtau = 0.2 / nsum if nsum > 0 else 1e30
@@ -116,32 +95,37 @@ def fftfit(prof, s, phi):
         if nsum > (nh / 2.0 + 0.5):
             edtau = 1e-4
 
-        a = b = fa = fb = None
+        a = b = None
         low = high = False
         ntries = 0
         while True:
             ftau = _dchisqr(tau, tmp, r, nsum)
             ntries += 1
             if ftau < 0.0:
-                a, fa = tau, ftau
+                a = tau
                 tau += dtau
                 low = True
             else:
-                b, fb = tau, ftau
+                b = tau
                 tau -= dtau
                 high = True
             if ntries > 100:
-                # Cannot bracket the root (mirrors fftfit.f's ntries>100 bailout).
-                # eshift=999 flags the failure; ngood is the real computed value.
-                # (The Fortran leaves b/errb as garbage here; we return clean zeros.)
-                return (0.0, 999.0, 0.0, 0.0, 0.0, 0.0, ngood)
+                return None            # cannot bracket -> caller emits the bailout tuple
             if low != high:
                 continue
             break
         lo, hi = (a, b) if a < b else (b, a)
         tau = brentq(_dchisqr, lo, hi, args=(tmp, r, nsum), xtol=edtau)
+    return tau
 
-    # Best-fit scale b, and uncertainty estimates, over the good harmonics.
+
+def _finalize(tau, p, s, r, nh, ngood, fac):
+    """Given a shift tau, compute Taylor's scale/S-N/uncertainty outputs.
+
+    Shared by both methods so their diagnostic outputs (snr, b, ...) are consistent;
+    only the way ``tau`` was found differs. Returns (shift, eshift, snr, esnr, b, errb).
+    """
+    tmp = p * s
     k = np.arange(1, ngood + 1)
     cosfac = np.cos(-r[:ngood] + k * tau)
     s1 = np.sum(tmp[:ngood] * cosfac)
@@ -151,11 +135,65 @@ def fftfit(prof, s, phi):
 
     sq = (p[:ngood] ** 2 - 2.0 * b * p[:ngood] * s[:ngood] * np.cos(r[:ngood] - k * tau)
           + (b * s[:ngood]) ** 2)
-    rms = np.sqrt(np.sum(sq) / ngood)
+    rms = np.sqrt(max(np.sum(sq), 0.0) / ngood)   # clip: a perfect noiseless fit can round <0
     errb = rms / np.sqrt(2.0 * s2)
     errtau = rms / np.sqrt(2.0 * b * s3) if s3 > 0.0 else 0.0
-    snr = 2.0 * np.sqrt(2.0 * nh) * b / rms
-    shift = fac * tau
-    eshift = fac * errtau
-    esnr = snr * errb / b
+    snr = 2.0 * np.sqrt(2.0 * nh) * b / rms if rms > 0.0 else 0.0
+    esnr = snr * errb / b if b != 0.0 else 0.0
+    return fac * tau, fac * errtau, snr, esnr, b, errb
+
+
+def fftfit(prof, s, phi, code="classic"):
+    """Determine the shift between ``prof`` and a template, in the Fourier domain.
+
+    ``s`` and ``phi`` are the template amplitude and phase (as returned by :func:`cprof`,
+    with ``phi`` optionally rotated as get_TOAs.py does). Returns
+    ``(shift, eshift, snr, esnr, b, errb, ngood)`` with ``shift``/``eshift`` in bins.
+
+    ``code`` selects the algorithm:
+      * ``"classic"`` -- faithful port of Taylor's fftfit.f (default; backward-compatible).
+      * ``"aarchiba"`` -- Anne Archibald's independent algorithm (handles symmetric /
+        low-harmonic profiles the classic one bails on). Its own shift and uncertainty
+        are reported; snr/b/errb are computed with the same post-fit formulas as classic
+        so the diagnostic outputs stay consistent between methods.
+    """
+    prof = np.asarray(prof, dtype=np.float64)
+    s = np.asarray(s, dtype=np.float64)
+    phi = np.asarray(phi, dtype=np.float64)
+    nmax = len(prof)
+    nh = nmax // 2
+    fac = nmax / TWOPI
+
+    # Number of "good" (significant) template harmonics: leading harmonics whose
+    # amplitude exceeds twice the mean of the upper half of the spectrum.
+    ave = 2.0 * np.sum(s[nh // 2:nh]) / nh
+    below = np.where(s[:nh] < ave)[0]
+    ngood = nh if below.size == 0 else int(below[0])
+
+    # Profile spectrum; form the cross terms.
+    _, p, theta = cprof(prof)
+    r = theta - phi
+
+    eshift_override = None
+    if code == "classic":
+        tau = _classic_tau(p * s, r, ngood, nh)
+        if tau is None:
+            return (0.0, 999.0, 0.0, 0.0, 0.0, 0.0, ngood)
+    elif code == "aarchiba":
+        # Reconstruct the template from (s, phi) and run the independent algorithm.
+        tc = np.zeros(nh + 1, dtype=complex)
+        tc[1:] = (s / 2.0) * np.exp(-1.0j * phi)
+        template = np.fft.irfft(tc, nmax)
+        try:
+            rr = _aarchiba.fftfit_full(template, prof)
+        except Exception:
+            return (0.0, 999.0, 0.0, 0.0, 0.0, 0.0, ngood)
+        tau = rr.shift * TWOPI                 # turns -> radians (shift = fac*tau = nmax*rr.shift)
+        eshift_override = rr.uncertainty * nmax
+    else:
+        raise ValueError("Unrecognized FFTFIT method %r (use 'classic' or 'aarchiba')" % code)
+
+    shift, eshift, snr, esnr, b, errb = _finalize(tau, p, s, r, nh, ngood, fac)
+    if eshift_override is not None:
+        eshift = eshift_override
     return shift, eshift, snr, esnr, b, errb, ngood
