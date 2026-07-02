@@ -352,7 +352,7 @@ int main(int argc, char *argv[])
     int *maskchans = NULL;
     long worklen = 0, reads_per_part = 0, blockfloats;
     long long lorec = 0, numrec = 0, totnumfolded = 0, totnumblocks = 0;
-    long ii, jj;
+    long ii, jj, numread = 0;
     int c;
     double tepoch, shared_dt;
     struct spectra_info s;
@@ -667,66 +667,109 @@ int main(int argc, char *argv[])
 
     printf("Folding...\n");
     printf("  Folded %lld points of %.0f", totnumfolded, N);
-    for (ii = 0; ii < fcs.npart; ii++) {
-        for (jj = 0; jj < reads_per_part; jj++) {
-            long numread;
-            double fold_time0 = ii * reads_per_part * proftime + jj * proftime;
+    /* One persistent parallel region spans the whole block loop, instead of  */
+    /* entering a fresh team per block (Stage 6 #2).  Each worker runs the     */
+    /* part/block loops privately and meets at the work-sharing constructs:    */
+    /* the serial read/clean and reader-advance run in `omp single` and the    */
+    /* per-candidate dedisperse+fold in `omp for`.  The implicit barriers keep */
+    /* the exact serial-read -> fold-all -> advance ordering (so dedisp still  */
+    /* sees the intact current/last pair and the advance/swap still happens    */
+    /* only after every candidate has consumed it), which keeps per-candidate  */
+    /* output bit-identical to the per-block-team version.                     */
+#ifdef _OPENMP
+#pragma omp parallel default(shared) private(ii, jj)
+#endif
+    {
+        for (ii = 0; ii < fcs.npart; ii++) {
+            for (jj = 0; jj < reads_per_part; jj++) {
+                double fold_time0 = ii * reads_per_part * proftime + jj * proftime;
 
-            if (RAWDATA) {
-                numread = read_clean_rawblock(reader, &s, maskchans, &nummasked,
-                                              &obsmask, &padding);
-                /* Parallelize over candidates: the cleaned block (current/last)  */
-                /* is read-only here, and each candidate writes only its own       */
-                /* dedispersion scratch and rawfolds/buffers, so there is no       */
-                /* cross-candidate contention.  The reader advance/swap happens    */
-                /* AFTER this region, so no candidate reads last_clean post-swap.  */
+                /* Serial read + clean of this block (one thread); the implicit */
+                /* barrier at the end of `single` publishes numread and the     */
+                /* cleaned block to every worker before any fold begins.        */
 #ifdef _OPENMP
-#pragma omp parallel for default(shared) schedule(static)
+#pragma omp single
 #endif
-                for (c = 0; c < ncand; c++) {
-                    int tid = 0;
-#ifdef _OPENMP
-                    tid = omp_get_thread_num();
-#endif
-                    float *sub_c = subdatas[tid];
-                    dedisp_subbands(reader->current_clean, reader->last_clean,
-                                    worklen, numchan, fc[c].idispdts, fc[c].nsub,
-                                    sub_c);
-                    fold_subband_block(cmd, &fc[c], sub_c, worklen, numread, ii,
-                                       fold_time0, fc[c].foldf, fc[c].foldfd,
-                                       fc[c].foldfdd, buffers[c], phasesadded[c]);
-                }
-                rawblock_reader_advance(reader);
-            } else {            /* insubs: subbands already dedispersed at the */
+                {
+                    if (RAWDATA)
+                        numread = read_clean_rawblock(reader, &s, maskchans,
+                                                      &nummasked, &obsmask,
+                                                      &padding);
+                    else        /* insubs: subbands already dedispersed at the */
                                 /* nominal DM; the candidate DM enters at the   */
                                 /* optimize stage (correct_subbands_for_DM).    */
-                numread = read_PRESTO_subbands(s.files, s.num_files, insub_data,
-                                               recdt, maskchans, &nummasked,
-                                               &obsmask, s.padvals);
+                        numread = read_PRESTO_subbands(s.files, s.num_files,
+                                                       insub_data, recdt, maskchans,
+                                                       &nummasked, &obsmask,
+                                                       s.padvals);
+                }
+
+                /* Parallelize over candidates: the cleaned block (current/last) */
+                /* is read-only here, and each candidate writes only its own      */
+                /* dedispersion scratch and rawfolds/buffers, so there is no      */
+                /* cross-candidate contention.  The reader advance/swap happens   */
+                /* AFTER this region (below), so no candidate reads last_clean    */
+                /* post-swap.                                                     */
+                if (RAWDATA) {
 #ifdef _OPENMP
-#pragma omp parallel for default(shared) schedule(static)
+#pragma omp for schedule(static)
 #endif
-                for (c = 0; c < ncand; c++) {
-                    int tid = 0;
-                    float *src = insub_data;
+                    for (c = 0; c < ncand; c++) {
+                        int tid = 0;
 #ifdef _OPENMP
-                    tid = omp_get_thread_num();
+                        tid = omp_get_thread_num();
 #endif
-                    if (cmd->runavgP) {     /* runavg mutates data: fold a copy */
-                        src = subdatas[tid];
-                        memcpy(src, insub_data,
-                               (size_t) blockfloats * sizeof(float));
+                        float *sub_c = subdatas[tid];
+                        dedisp_subbands(reader->current_clean, reader->last_clean,
+                                        worklen, numchan, fc[c].idispdts, fc[c].nsub,
+                                        sub_c);
+                        fold_subband_block(cmd, &fc[c], sub_c, worklen, numread, ii,
+                                           fold_time0, fc[c].foldf, fc[c].foldfd,
+                                           fc[c].foldfdd, buffers[c], phasesadded[c]);
                     }
-                    fold_subband_block(cmd, &fc[c], src, worklen, numread, ii,
-                                       fold_time0, fc[c].foldf, fc[c].foldfd,
-                                       fc[c].foldfdd, buffers[c], phasesadded[c]);
+                } else {
+#ifdef _OPENMP
+#pragma omp for schedule(static)
+#endif
+                    for (c = 0; c < ncand; c++) {
+                        int tid = 0;
+                        float *src = insub_data;
+#ifdef _OPENMP
+                        tid = omp_get_thread_num();
+#endif
+                        if (cmd->runavgP) { /* runavg mutates data: fold a copy */
+                            src = subdatas[tid];
+                            memcpy(src, insub_data,
+                                   (size_t) blockfloats * sizeof(float));
+                        }
+                        fold_subband_block(cmd, &fc[c], src, worklen, numread, ii,
+                                           fold_time0, fc[c].foldf, fc[c].foldfd,
+                                           fc[c].foldfdd, buffers[c], phasesadded[c]);
+                    }
+                }
+
+                /* Serial reader advance + counters (one thread).  The `for`    */
+                /* above ended with a barrier, so every candidate has consumed  */
+                /* the (current, last) pair before the swap; this `single`      */
+                /* barrier in turn orders the swap before the next block read.  */
+#ifdef _OPENMP
+#pragma omp single
+#endif
+                {
+                    if (RAWDATA)
+                        rawblock_reader_advance(reader);
+                    totnumfolded += numread;
+                    totnumblocks++;
                 }
             }
-            totnumfolded += numread;
-            totnumblocks++;
+#ifdef _OPENMP
+#pragma omp single
+#endif
+            {
+                printf("\r  Folded %lld points of %.0f", totnumfolded, N);
+                fflush(NULL);
+            }
         }
-        printf("\r  Folded %lld points of %.0f", totnumfolded, N);
-        fflush(NULL);
     }
     printf("\n");
 
