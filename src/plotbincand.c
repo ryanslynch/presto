@@ -16,7 +16,7 @@ void usage(void);
 
 int main(int argc, char *argv[])
 {
-    FILE *fftfile, *candfile = NULL, *psfile = NULL;
+    FILE *fftfile, *candfile = NULL;
     char filenm[100], candnm[100], psfilenm[120];
     float locpow, norm, powargr, powargi;
     float *powr, *spreadpow, *minizoompow, *freqs;
@@ -220,9 +220,6 @@ int main(int argc, char *argv[])
     vect_free(minizoom);
     vect_free(minizoompow);
     fclose(fftfile);
-    if ((argc == 6) && (!strcmp(argv[5], "ps"))) {
-        fclose(psfile);
-    }
     return (0);
 }
 

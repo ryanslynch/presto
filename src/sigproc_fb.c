@@ -252,7 +252,7 @@ void write_filterbank_header(sigprocfb * fb, FILE * outfile)
 /* attempt to read in the general header info from a pulsar data file */
 int read_filterbank_header(sigprocfb * fb, FILE * inputfile)
 {
-    char string[80], message[80];
+    char string[80];
     int itmp, nbytes = 0, totalbytes;
     int expecting_rawdatafile = 0, expecting_source_name = 0;
     int barycentric, pulsarcentric;
@@ -353,9 +353,9 @@ int read_filterbank_header(sigprocfb * fb, FILE * inputfile)
             strcpy(fb->source_name, string);
             expecting_source_name = 0;
         } else {
-            sprintf(message, "read_filterbank_header - unknown parameter: %s\n",
+            fprintf(stderr,
+                    "ERROR: read_filterbank_header - unknown parameter: %s\n",
                     string);
-            fprintf(stderr, "ERROR: %s\n", message);
             exit(1);
         }
     }

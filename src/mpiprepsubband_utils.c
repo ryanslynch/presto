@@ -27,7 +27,7 @@ void make_maskbase_struct(void)
     int blockcounts[2] = { 6, 5 };
     MPI_Datatype types[2] = { MPI_DOUBLE, MPI_INT };
     MPI_Aint displs[2];
-    maskbase mbase;
+    maskbase mbase = { 0 };
 
     MPI_Get_address(&mbase.timesigma, &displs[0]);
     MPI_Get_address(&mbase.numchan, &displs[1]);
@@ -116,7 +116,7 @@ void make_spectra_info_struct(void)
         MPI_LONG
     };
     MPI_Aint displs[17];
-    struct spectra_info s;
+    struct spectra_info s = { 0 };
 
     MPI_Get_address(&s.telescope, &displs[0]);
     MPI_Get_address(&s.observer, &displs[1]);
