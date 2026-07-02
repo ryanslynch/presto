@@ -58,12 +58,19 @@ PR, nanograv/PINT#777, was never merged). PRESTO can give it a maintained home. 
 in *turns* plus `scale`/`offset`/`uncertainty`; a thin adapter maps to PRESTO's
 `(shift_bins, eshift, snr, esnr, b, errb, ngood)` tuple.
 
-**Open question — uncertainty calibration:** Anne's likely reason for never finalizing was
-uncertainty estimation, not the shift (which is solid). Her source carries a `FIXME` about the
-noise-std normalization, and her statistical coverage tests (does the 1-sigma bar contain truth
-~68% of the time?) are the hard part; she also marks *PRESTO's* uncertainties `xfail(reason=
-"bug?")` in places. Plan: port her test suite, run it against both implementations, see where the
-uncertainties actually fail, then decide how much to invest in fixing calibration.
+**Uncertainty calibration [decided: ship now, fix later].** Measured 1-sigma coverage (does the
+error bar contain the truth ~68% of the time?) shows *both* methods under-cover by ~5-15%, worse
+for broad profiles (e.g. kappa=1: aarchiba 0.656, classic 0.625 vs target 0.683; multi-sigma over
+N=2000). This is a pre-existing FFTFIT trait inherited faithfully by the classic port, not a
+regression; the shift itself is solid for both. Decision: proceed with the rewrite, document the
+uncertainties as approximate/slightly optimistic, and treat calibration as a separate follow-up
+(see below) rather than a blocker.
+
+**Follow-up (tracked, non-blocking): FFTFIT uncertainty calibration.** Get 1-sigma coverage to
+~0.683 across regimes. aarchiba is the better starting point (marginally better calibrated, and
+its least-squares/covariance framework is amenable to a principled fix). Candidate fixes: resolve
+Anne's `std`-normalization `FIXME`; investigate linearization bias for broad profiles; possibly an
+empirical inflation factor validated against the coverage tests.
 
 **Phased approach:**
 0. [done] Golden-reference harness: freeze inputs+outputs of the current Fortran over a broad
