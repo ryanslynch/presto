@@ -14,6 +14,22 @@ static const char *const num[] = { "0th", "1st", "2nd", "3rd", "4th", "5th", "6t
 };
 
 
+static void short_label(char *dst, const char *src)
+/* Copy at most 19 characters of 'src' into 'dst' and NUL-terminate.       */
+/* Using memcpy of a computed length (rather than strncpy or a bounded     */
+/* snprintf into a small buffer) avoids the -Wstringop-truncation /        */
+/* -Wformat-truncation false positives that older gcc emits on the         */
+/* obvious idioms.  Callers build the full label in a generously-sized     */
+/* buffer first, so no formatted output is ever truncated unexpectedly.    */
+{
+    size_t n = strlen(src);
+    if (n > 19)
+        n = 19;
+    memcpy(dst, src, n);
+    dst[n] = '\0';
+}
+
+
 int read_database(void)
 /* Reads the full pulsar database into the static array psrdata */
 {
@@ -239,7 +255,7 @@ int comp_psr_to_cand(fourierprops * cand, infodata * idata, char *output, int fu
     double theor, theoz, sidedr = 20.0;
     double r_criteria, z_criteria, rdiff, zdiff, difft = 0;
     static double T, beam2, ra, dec, epoch;
-    char tmp1[80], tmp2[80], tmp3[80], shortout[30], psrname[20];
+    char tmp1[80], tmp2[80], tmp3[80], shortout[128], psrname[20];
     rzwerrs rzws;
 
     /* Read the database if needed */
@@ -337,9 +353,9 @@ int comp_psr_to_cand(fourierprops * cand, infodata * idata, char *output, int fu
                                         psrname, T / theor);
                                 sprintf(output, "%s%s\n     %s", tmp3, tmp1, tmp2);
                             } else {
-                                sprintf(shortout, "PSR %s%s", psrname, tmp1);
-                                strncpy(output, shortout, 20);
-                                output[20-1] = '\0';
+                                snprintf(shortout, sizeof(shortout), "PSR %s%s",
+                                         psrname, tmp1);
+                                short_label(output, shortout);
                             }
                         } else {
                             if (full) {
@@ -348,10 +364,9 @@ int comp_psr_to_cand(fourierprops * cand, infodata * idata, char *output, int fu
                                         psrname, T / theor);
                                 sprintf(output, "%s%s\n     %s", tmp3, tmp1, tmp2);
                             } else {
-                                sprintf(shortout, "%s H %s%s", num[jj], psrname,
-                                        tmp1);
-                                strncpy(output, shortout, 20);
-                                output[20-1] = '\0';
+                                snprintf(shortout, sizeof(shortout), "%s H %s%s",
+                                         num[jj], psrname, tmp1);
+                                short_label(output, shortout);
                             }
                         }
                         return ii + 1;
@@ -367,9 +382,9 @@ int comp_psr_to_cand(fourierprops * cand, infodata * idata, char *output, int fu
                                     psrname, T / theor);
                             sprintf(output, "%s%s\n     %s", tmp3, tmp1, tmp2);
                         } else {
-                            sprintf(shortout, "SL H%d %s", jj, psrname);
-                            strncpy(output, shortout, 20);
-                            output[20-1] = '\0';
+                            snprintf(shortout, sizeof(shortout), "SL H%d %s",
+                                     jj, psrname);
+                            short_label(output, shortout);
                         }
                         return ii + 1;
                     }
@@ -400,7 +415,7 @@ int comp_bin_to_cand(binaryprops * cand, infodata * idata, char *output, int ful
     int ii, jj, kk;
     double theop, ra, dec, beam2, difft = 0.0, epoch;
     double bmod, pmod;
-    char tmp1[80], tmp2[80], tmp3[80], psrname[20], shortout[30];
+    char tmp1[80], tmp2[80], tmp3[80], psrname[20], shortout[128];
 
     /* Read the database if needed */
 
@@ -478,10 +493,9 @@ int comp_bin_to_cand(binaryprops * cand, infodata * idata, char *output, int ful
                                             sprintf(output, "%s%s%s", tmp1, tmp2,
                                                     tmp3);
                                         } else {
-                                            sprintf(shortout, "%s H %s", num[kk],
-                                                    psrname);
-                                            strncpy(output, shortout, 20);
-                                            output[20-1] = '\0';
+                                            snprintf(shortout, sizeof(shortout),
+                                                     "%s H %s", num[kk], psrname);
+                                            short_label(output, shortout);
                                         }
                                     } else {
                                         if (full) {
@@ -491,9 +505,9 @@ int comp_bin_to_cand(binaryprops * cand, infodata * idata, char *output, int ful
                                                     pulsardata[ii].orb.p);
                                             sprintf(output, "%s%s", tmp1, tmp2);
                                         } else {
-                                            sprintf(shortout, "PSR %s", psrname);
-                                            strncpy(output, shortout, 20);
-                                            output[20-1] = '\0';
+                                            snprintf(shortout, sizeof(shortout),
+                                                     "PSR %s", psrname);
+                                            short_label(output, shortout);
                                         }
                                     }
                                 }

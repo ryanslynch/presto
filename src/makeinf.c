@@ -13,7 +13,7 @@ int main(void)
         "K", "L", "M", "Other"
     };
 
-    char temp1[100], temp2[100];
+    char temp1[100], temp2[100], fracbuf[103];
     int i, itemp, itemp2;
     infodata data;
 
@@ -86,8 +86,8 @@ int main(void)
             fgets(temp2, 100, stdin);
             temp2[strlen(temp2) - 1] = '\0';
             sscanf(temp2, "%d.%s", &data.mjd_i, temp1);
-            sprintf(temp2, "0.%s", temp1);
-            data.mjd_f = atof(temp2);
+            snprintf(fracbuf, sizeof(fracbuf), "0.%s", temp1);
+            data.mjd_f = atof(fracbuf);
             if (data.mjd_i < 0) {
                 printf("\n   Not a MJD.  Should be a positive number.\n");
                 itemp2 = 1;

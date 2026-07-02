@@ -16,6 +16,19 @@ extern void add_padding(float *fdata, float *padding, int numchan, int numtopad)
 
 void get_PSRFITS_subint(float *fdata, unsigned char *cdata, struct spectra_info *s);
 
+static void copy_trunc(char *dst, const char *src, size_t dstsize)
+/* Copy at most dstsize-1 characters of 'src' into 'dst' and NUL-terminate.  */
+/* memcpy of a computed length (rather than a truncating strncpy) avoids the */
+/* -Wstringop-truncation false positive that older gcc emits even when the   */
+/* copy is immediately NUL-terminated.                                       */
+{
+    size_t n = strlen(src);
+    if (n > dstsize - 1)
+        n = dstsize - 1;
+    memcpy(dst, src, n);
+    dst[n] = '\0';
+}
+
 double DATEOBS_to_MJD(char *dateobs, int *mjd_day, double *mjd_fracday)
 // Convert DATE-OBS string from PSRFITS primary HDU to a MJD
 {
@@ -99,8 +112,7 @@ int is_PSRFITS(char *filename)
         } else {                                                      \
             if (ii==0) {                                              \
                 if (sizeof(ctmp) > sizeof((param))) {                 \
-                    strncpy((param), ctmp, sizeof(param));            \
-                    (param)[sizeof((param))-1] = '\0';                \
+                    copy_trunc((param), ctmp, sizeof(param));         \
                 } else {                                              \
                     strncpy((param), ctmp, sizeof((param)));          \
                 }                                                     \
