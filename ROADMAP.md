@@ -21,6 +21,43 @@ conda-forge package these paths need to be discoverable without user-set env var
 - Remove Fortran from the main compiled binaries, replacing it with GSL code where possible.
 - Convert the original **FFTFIT** Fortran code and its Python module to pure Python
   (NumPy + SciPy). This can be done independently of the rest and should get thorough tests.
+  See the dedicated plan below.
+
+#### FFTFIT pure-Python rewrite (first Fortran-removal target)
+
+FFTFIT (Taylor 1992) measures pulsar times-of-arrival by fitting a shift/scale between an
+observed profile and a template, entirely in the Fourier domain. Current implementation:
+`python/fftfit_src/*.f` (`fftfit`, `cprof`, `fccf`, `brent`, `ffft`) wrapped via f2py; the
+public API used by `bin/get_TOAs.py` and `bin/sum_profiles.py` is just `cprof(template)` and
+`fftfit(profile, amp, pha)`. Because this feeds high-precision timing, the replacement must be
+validated very carefully against the original.
+
+**Validation philosophy:** "match, but aim to improve" — bulk agreement with the Fortran must be
+negligible relative to the reported `eshift`; cases where the port is *more* accurate or stable
+(low-SNR, the `eshift=999` bailout, near-half-bin shifts) count as improvements, not failures.
+Note the Fortran is single-precision (`real*4`) with truncated constants, so a double-precision
+port will not be bit-identical by design.
+
+**Oracles:** (1) a frozen golden dataset generated from the current Fortran [primary]; (2) PINT's
+pure-Python `fftfit` [independent cross-check]; (3) real-data TOAs, kept lightweight by reusing
+the existing prepfold fixtures in `tests/prepfold/goodfolds/*.pfd` rather than adding new data.
+
+**Phased approach:**
+0. Golden-reference harness: freeze inputs+outputs of the current Fortran over a broad synthetic
+   battery, plus frozen reference TOAs from a `goodfolds` fold via `get_TOAs.py`.
+1. Bottom-up port with per-routine tests (`cprof` → `fccf` → `dchisqr` → error formulas →
+   continuation loop). Use NumPy `rfft`/`irfft` for `ffft.f` and `scipy.optimize.brentq` for
+   `brent.f` (scipy is already a dependency), letting those two files be dropped.
+2. Assemble behind the identical public API (drop-in for `get_TOAs.py`, `sum_profiles.py`).
+3. Validate against all three oracles with tiered tolerances.
+4. Swap the build: replace the f2py target in `python/fftfit_src/meson.build` with a pure-Python
+   install, remove the Fortran, update `test_fftfit.py`.
+
+**Nice-to-have improvement (not required):** the Fortran bails out (`eshift=999`) for profiles
+with fewer than 4 significant harmonics, because `nsum0 = min(16, ngood/4)` collapses to 0. In
+particular a pure sinusoid (`ngood=1`) cannot be fit. An improved algorithm should ideally handle
+the near-sinusoidal / very-low-harmonic case gracefully. This has not been needed in practice, so
+it is a bonus goal, not a requirement — but a good one to aim for.
 
 ### Remove the TEMPO dependency
 
