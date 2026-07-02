@@ -38,26 +38,47 @@ negligible relative to the reported `eshift`; cases where the port is *more* acc
 Note the Fortran is single-precision (`real*4`) with truncated constants, so a double-precision
 port will not be bit-identical by design.
 
-**Oracles:** (1) a frozen golden dataset generated from the current Fortran [primary]; (2) PINT's
-pure-Python `fftfit` [independent cross-check]; (3) real-data TOAs, kept lightweight by reusing
-the existing prepfold fixtures in `tests/prepfold/goodfolds/*.pfd` rather than adding new data.
+**Oracles:** (1) a frozen golden dataset generated from the current Fortran [primary]; (2) Anne
+Archibald's independent pure-Python FFTFIT [independent cross-check — see below]; (3) real-data
+TOAs, kept lightweight by reusing the existing prepfold fixtures in `tests/prepfold/goodfolds/*.pfd`
+rather than adding new data.
+
+**Two implementations, selectable by method (decided):** ship both behind a method selector.
+  * `"classic"` — the faithful NumPy/SciPy port of Taylor's Fortran. **Default**, for
+    backward-compatible TOAs / reproducibility. Validated to ~0.28 sigma vs. the Fortran.
+  * `"aarchiba"` — Anne Archibald's independent algorithm (cross-spectrum + upsampled `irfft` +
+    bounded minimization + least-squares scale/uncertainty), adopted from her unmerged PINT
+    branch. Opt-in improvement: handles the symmetric-profile / very-low-harmonic case the
+    Fortran bails on, and different-length profiles.
+
+**Adopting Anne's code (`aarchiba/PINT` branch `fftfit_new`, BSD-3-clause → GPL-compatible,
+retain attribution):** her implementation appears abandoned upstream (she has left the field; the
+PR, nanograv/PINT#777, was never merged). PRESTO can give it a maintained home. Her 844-line
+`hypothesis` test suite is excellent and should be adopted/adapted. Note her API returns `shift`
+in *turns* plus `scale`/`offset`/`uncertainty`; a thin adapter maps to PRESTO's
+`(shift_bins, eshift, snr, esnr, b, errb, ngood)` tuple.
+
+**Open question — uncertainty calibration:** Anne's likely reason for never finalizing was
+uncertainty estimation, not the shift (which is solid). Her source carries a `FIXME` about the
+noise-std normalization, and her statistical coverage tests (does the 1-sigma bar contain truth
+~68% of the time?) are the hard part; she also marks *PRESTO's* uncertainties `xfail(reason=
+"bug?")` in places. Plan: port her test suite, run it against both implementations, see where the
+uncertainties actually fail, then decide how much to invest in fixing calibration.
 
 **Phased approach:**
-0. Golden-reference harness: freeze inputs+outputs of the current Fortran over a broad synthetic
-   battery, plus frozen reference TOAs from a `goodfolds` fold via `get_TOAs.py`.
-1. Bottom-up port with per-routine tests (`cprof` → `fccf` → `dchisqr` → error formulas →
-   continuation loop). Use NumPy `rfft`/`irfft` for `ffft.f` and `scipy.optimize.brentq` for
-   `brent.f` (scipy is already a dependency), letting those two files be dropped.
-2. Assemble behind the identical public API (drop-in for `get_TOAs.py`, `sum_profiles.py`).
-3. Validate against all three oracles with tiered tolerances.
-4. Swap the build: replace the f2py target in `python/fftfit_src/meson.build` with a pure-Python
+0. [done] Golden-reference harness: freeze inputs+outputs of the current Fortran over a broad
+   synthetic battery (`fftfit_reference.npz`), plus real-data cases from a `goodfolds` fold.
+1. [done] Bottom-up "classic" port (`cprof` via NumPy `rfft`; `fftfit` with `scipy.optimize.brentq`
+   for `brent.f` and NumPy for `ffft.f`, letting both Fortran files be dropped). Validated vs the
+   frozen oracle: shift within 0.28 sigma, bailouts exact.
+2. [done] Independent cross-check: vendored Anne's algorithm agrees with the port to <=0.23 bins on
+   all well-determined fits (disagreements only at snr~1.5).
+3. [in progress] Adopt Anne's code + test suite as the `"aarchiba"` method; build the method
+   selector and the shift/uncertainty adapter; resolve the uncertainty-calibration question above.
+4. Assemble behind the public API (drop-in for `get_TOAs.py`, `sum_profiles.py`) with `"classic"`
+   default; validate against real-data TOAs from `goodfolds`.
+5. Swap the build: replace the f2py target in `python/fftfit_src/meson.build` with a pure-Python
    install, remove the Fortran, update `test_fftfit.py`.
-
-**Nice-to-have improvement (not required):** the Fortran bails out (`eshift=999`) for profiles
-with fewer than 4 significant harmonics, because `nsum0 = min(16, ngood/4)` collapses to 0. In
-particular a pure sinusoid (`ngood=1`) cannot be fit. An improved algorithm should ideally handle
-the near-sinusoidal / very-low-harmonic case gracefully. This has not been needed in practice, so
-it is a bonus goal, not a requirement — but a good one to aim for.
 
 ### Remove the TEMPO dependency
 
