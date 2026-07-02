@@ -22,6 +22,13 @@ conda-forge package these paths need to be discoverable without user-set env var
 - **[DONE]** Convert the original **FFTFIT** Fortran code and its Python module to pure Python
   (NumPy + SciPy). This can be done independently of the rest and should get thorough tests.
   See the dedicated plan below.
+- **[DONE]** Replace the vendored LAPACK/BLAS `dgels` least-squares solver (`src/least_squares.f`,
+  the last Fortran source) with GSL's `gsl_multifit_linear` in `bary2topo()`. This drops
+  `least_squares.f`, `include/f77.h`, and the Fortran language from the meson build, so
+  `libpresto` and all compiled tools are now Fortran-free (PGPLOT remains an external Fortran
+  dependency). Validated: GSL vs the old Fortran agree to ~4e-14 relative on the raw fit
+  outputs, and end-to-end prepfold topocentric timing parameters differ by ~1e-10 to 1e-9 of
+  their quoted uncertainties (QR-vs-SVD roundoff, negligible for timing).
 
 #### FFTFIT pure-Python rewrite (first Fortran-removal target)
 

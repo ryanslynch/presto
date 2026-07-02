@@ -109,7 +109,7 @@ executable('prepdata',
     include_directories: inc, link_with: libpresto, install: true)
 
 executable('prepfold',
-    sources: ['prepfold.c', 'prepfold_pipeline.c', 'prepfold_cmd.c', 'prepfold_utils.c', 'prepfold_plot.c', 'polycos.c', 'least_squares.f'] + INSTRUMENTOBJS + PLOT2DOBJS,
+    sources: ['prepfold.c', 'prepfold_pipeline.c', 'prepfold_cmd.c', 'prepfold_utils.c', 'prepfold_plot.c', 'polycos.c'] + INSTRUMENTOBJS + PLOT2DOBJS,
     dependencies: [glib, fftw, gsl, libm, fits, pgplot, cpgplot, x11, png, omp],
     include_directories: inc, link_with: libpresto, install: true)
 
@@ -119,7 +119,7 @@ executable('prepsubband',
     include_directories: inc, link_with: libpresto, install: true)
 
 executable('prepfold_multi',
-    sources: ['prepfold_multi.c', 'prepfold_multi_cmd.c', 'prepfold_pipeline.c', 'prepfold_utils.c', 'prepfold_plot.c', 'polycos.c', 'least_squares.f'] + INSTRUMENTOBJS + PLOT2DOBJS,
+    sources: ['prepfold_multi.c', 'prepfold_multi_cmd.c', 'prepfold_pipeline.c', 'prepfold_utils.c', 'prepfold_plot.c', 'polycos.c'] + INSTRUMENTOBJS + PLOT2DOBJS,
     dependencies: [glib, fftw, gsl, libm, fits, pgplot, cpgplot, x11, png, omp],
     include_directories: inc, link_with: libpresto, install: true)
 
@@ -163,7 +163,7 @@ executable('search_bin', 'search_bin.c', 'search_bin_cmd.c',
     include_directories: inc, link_with: libpresto, install: true)
 
 executable('show_pfd',
-    sources: ['show_pfd.c', 'show_pfd_cmd.c', 'prepfold_utils.c', 'prepfold_plot.c', 'least_squares.f'] + PLOT2DOBJS,
+    sources: ['show_pfd.c', 'show_pfd_cmd.c', 'prepfold_utils.c', 'prepfold_plot.c'] + PLOT2DOBJS,
     dependencies: [glib, fftw, gsl, libm, pgplot, cpgplot, x11, png],
     include_directories: inc, link_with: libpresto, install: true)
 

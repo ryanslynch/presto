@@ -177,7 +177,7 @@ int bary2topo(double *topotimes, double *barytimes, int numtimes,
 	      double *ft, double *ftd, double *ftdd);
 /* Convert a set of barycentric pulsar spin parameters (fb, fbd, fbdd) */
 /* into topocentric spin parameters (ft, ftd, ftdd) by performing      */
-/* a linear least-squares fit (using LAPACK routine DGELS).  The       */
+/* a linear least-squares fit (using GSL's multifit routines).  The    */
 /* routine equates the pulse phase using topcentric parameters and     */
 /* times to the pulse phase using barycentric parameters and times.    */
 

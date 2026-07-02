@@ -1,73 +1,8 @@
 #include "prepfold.h"
 #include "prepfold_cmd.h"
-#include "f77.h"
+#include <gsl/gsl_multifit.h>
 
 int compare_doubles(const void *a, const void *b);
-
-static void slaStringExport(const char *source_c, char *dest_f, int dest_len)
-{
-    int i;
-
-    /* Check the supplied pointers. */
-    if (!source_c || !dest_f)
-        return;
-
-    /* Copy the characters of the input C string to the output FORTRAN
-       string, taking care not to go beyond the end of the FORTRAN
-       string. */
-    for (i = 0; source_c[i] && (i < dest_len); i++) {
-        dest_f[i] = source_c[i];
-    }
-
-    /* Fill the rest of the output FORTRAN string with blanks. */
-    for (; i < dest_len; i++)
-        dest_f[i] = ' ';
-}
-
-
-F77_SUBROUTINE(dgels) (CHARACTER(TRANS),
-                       INTEGER(M),
-                       INTEGER(N),
-                       INTEGER(NRHS),
-                       DOUBLE_ARRAY(A),
-                       INTEGER(LDA),
-                       DOUBLE_ARRAY(B),
-                       INTEGER(LDB),
-                       DOUBLE_ARRAY(WORK), INTEGER(LWORK), INTEGER(INFO)
-                       TRAIL(TRANS));
-
-void call_dgels(char *trans, int m, int n, int nrhs,
-                double *a, int lda, double *b, int ldb,
-                double *work, int lwork, int *info)
-{
-    DECLARE_CHARACTER(TRANS, 1);
-    DECLARE_INTEGER(M);
-    DECLARE_INTEGER(N);
-    DECLARE_INTEGER(NRHS);
-    DECLARE_INTEGER(LDA);
-    DECLARE_INTEGER(LDB);
-    DECLARE_INTEGER(LWORK);
-    DECLARE_INTEGER(INFO);
-
-    slaStringExport(trans, TRANS, 1);
-    M = m;
-    N = n;
-    NRHS = nrhs;
-    LDA = lda;
-    LDB = ldb;
-    LWORK = lwork;
-    F77_CALL(dgels) (CHARACTER_ARG(TRANS),
-                     INTEGER_ARG(&M),
-                     INTEGER_ARG(&N),
-                     INTEGER_ARG(&NRHS),
-                     DOUBLE_ARRAY_ARG(a),
-                     INTEGER_ARG(&LDA),
-                     DOUBLE_ARRAY_ARG(b),
-                     INTEGER_ARG(&LDB),
-                     DOUBLE_ARRAY_ARG(work), INTEGER_ARG(&LWORK), INTEGER_ARG(&INFO)
-                     TRAIL_ARG(TRANS));
-    *info = INFO;
-}
 
 double switch_pfdot(double pf, double pfdot)
 {
@@ -344,40 +279,46 @@ int bary2topo(double *topotimes, double *barytimes, int numtimes,
               double *ft, double *ftd, double *ftdd)
 /* Convert a set of barycentric pulsar spin parameters (fb, fbd, fbdd) */
 /* into topocentric spin parameters (ft, ftd, ftdd) by performing      */
-/* a linear least-squares fit (using LAPACK routine DGELS).  The       */
+/* a linear least-squares fit (using GSL's multifit routines).  The    */
 /* routine equates the pulse phase using topcentric parameters and     */
 /* times to the pulse phase using barycentric parameters and times.    */
 {
-    double *work, *aa, *bb, dtmp;
-    int ii, mm = 3, nn, nrhs = 1, lwork, info, index;
-    char trans = 'T';
+    double dtmp, chisq;
+    int ii, mm = 3, nn, info;
+    gsl_matrix *X, *cov;
+    gsl_vector *y, *c;
+    gsl_multifit_linear_workspace *work;
 
     if (numtimes < 4) {
         printf("\n'numtimes' < 4 in bary2topo():  Cannot solve.\n\n");
         exit(0);
     }
     nn = numtimes;
-    lwork = mm + nn * 9;
-    aa = gen_dvect(mm * nn);
-    bb = gen_dvect(nn);
-    work = gen_dvect(lwork);
+    /* Overdetermined least-squares: nn equations, mm=3 unknowns.        */
+    /* Row ii of the design matrix uses the topocentric time offsets,    */
+    /* the right-hand side is the barycentric pulse phase.               */
+    X = gsl_matrix_alloc(nn, mm);
+    y = gsl_vector_alloc(nn);
+    c = gsl_vector_alloc(mm);
+    cov = gsl_matrix_alloc(mm, mm);
+    work = gsl_multifit_linear_alloc(nn, mm);
     for (ii = 0; ii < nn; ii++) {
-        index = ii * 3;
         dtmp = (topotimes[ii] - topotimes[0]) * SECPERDAY;
-        aa[index] = dtmp;
-        aa[index + 1] = 0.5 * dtmp * dtmp;
-        aa[index + 2] = dtmp * dtmp * dtmp / 6.0;
+        gsl_matrix_set(X, ii, 0, dtmp);
+        gsl_matrix_set(X, ii, 1, 0.5 * dtmp * dtmp);
+        gsl_matrix_set(X, ii, 2, dtmp * dtmp * dtmp / 6.0);
         dtmp = (barytimes[ii] - barytimes[0]) * SECPERDAY;
-        bb[ii] = dtmp * (fb + dtmp * (0.5 * fbd + fbdd * dtmp / 6.0));
+        gsl_vector_set(y, ii, dtmp * (fb + dtmp * (0.5 * fbd + fbdd * dtmp / 6.0)));
     }
-    // dgels_(&trans, &mm, &nn, &nrhs, aa, &mm, bb, &nn, work, &lwork, &info);
-    call_dgels(&trans, mm, nn, nrhs, aa, mm, bb, nn, work, lwork, &info);
-    *ft = bb[0];
-    *ftd = bb[1];
-    *ftdd = bb[2];
-    vect_free(aa);
-    vect_free(bb);
-    vect_free(work);
+    info = gsl_multifit_linear(X, y, c, cov, &chisq, work);
+    *ft = gsl_vector_get(c, 0);
+    *ftd = gsl_vector_get(c, 1);
+    *ftdd = gsl_vector_get(c, 2);
+    gsl_multifit_linear_free(work);
+    gsl_matrix_free(X);
+    gsl_matrix_free(cov);
+    gsl_vector_free(y);
+    gsl_vector_free(c);
     return info;
 }
 
