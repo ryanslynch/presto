@@ -28,8 +28,8 @@ from hypothesis.strategies import (
 )
 from numpy.testing import assert_allclose
 
-import fftfit_methods as m
-from fftfit_methods import fftfit_basic, fftfit_full, irfft_value, shift, wrap
+from presto import fftfit as m
+from presto.fftfit import fftfit_basic, fftfit_full, irfft_value, shift, wrap
 
 
 def vonmises_profile(kappa, n, phase=0):

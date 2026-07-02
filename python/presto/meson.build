@@ -1,6 +1,7 @@
 py3.install_sources(
   ['barycenter.py', 'bestprof.py', 'binary_psr.py', 'cosine_rand.py',
-  'cosine_rand.json', 'events.py', 'fftfit.py', 'filterbank.py', 'harmonic_sum.py',
+  'cosine_rand.json', 'events.py', 'fftfit.py', 'fftfit_aarchiba.py',
+  'filterbank.py', 'harmonic_sum.py',
   'infodata.py', 'injectpsr.py', 'kuiper.py', 'mpfit.py', 'parfile.py', 'Pgplot.py',
   'polycos.py', 'prepfold.py', 'psr_constants.py', 'psrfits.py', 'psr_utils.py',
   'pypsrcat.py', 'residuals.py', 'rfifind.py', 'sifting.py', 'sigproc.py',

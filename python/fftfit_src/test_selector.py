@@ -12,7 +12,7 @@ import os
 import warnings
 import numpy as np
 
-import fftfit_py
+from presto import fftfit
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REF = os.path.join(HERE, "fftfit_reference.npz")
@@ -32,8 +32,8 @@ def test_methods_agree_on_well_determined_fits():
             if r["eshift"] >= 999 or r["eshift"] > 0.2 or r["snr"] <= 0:
                 continue
             i, nb = r["idx"], r["nbins"]
-            c = fftfit_py.fftfit(d[f"prof_{i}"], d[f"amp_{i}"], d[f"pha_{i}"], code="classic")
-            a = fftfit_py.fftfit(d[f"prof_{i}"], d[f"amp_{i}"], d[f"pha_{i}"], code="aarchiba")
+            c = fftfit.fftfit(d[f"prof_{i}"], d[f"amp_{i}"], d[f"pha_{i}"], code="classic")
+            a = fftfit.fftfit(d[f"prof_{i}"], d[f"amp_{i}"], d[f"pha_{i}"], code="aarchiba")
             dshift = abs((a[0] - c[0] + nb / 2) % nb - nb / 2)   # wrapped bin difference
             worst = max(worst, dshift)
             n += 1
@@ -47,7 +47,7 @@ def test_aarchiba_tuple_is_fully_populated():
         warnings.simplefilter("ignore")
         for r in list(d["meta"])[:50]:
             i = r["idx"]
-            out = fftfit_py.fftfit(d[f"prof_{i}"], d[f"amp_{i}"], d[f"pha_{i}"], code="aarchiba")
+            out = fftfit.fftfit(d[f"prof_{i}"], d[f"amp_{i}"], d[f"pha_{i}"], code="aarchiba")
             assert all(np.isfinite(x) for x in out), f"non-finite output: {out}"
 
 
@@ -61,8 +61,8 @@ def test_aarchiba_fits_what_classic_bails_on():
                 continue
             i = r["idx"]
             args = (d[f"prof_{i}"], d[f"amp_{i}"], d[f"pha_{i}"])
-            c = fftfit_py.fftfit(*args, code="classic")
-            a = fftfit_py.fftfit(*args, code="aarchiba")
+            c = fftfit.fftfit(*args, code="classic")
+            a = fftfit.fftfit(*args, code="aarchiba")
             assert c[1] >= 999, "expected classic to bail on a pure sinusoid"
             assert a[1] < 1.0 and np.isfinite(a[0]), f"aarchiba failed to fit sine: {a}"
             checked += 1
@@ -75,7 +75,7 @@ def test_unknown_method_raises():
     r = d["meta"][0]
     i = r["idx"]
     try:
-        fftfit_py.fftfit(d[f"prof_{i}"], d[f"amp_{i}"], d[f"pha_{i}"], code="bogus")
+        fftfit.fftfit(d[f"prof_{i}"], d[f"amp_{i}"], d[f"pha_{i}"], code="bogus")
     except ValueError:
         return
     raise AssertionError("expected ValueError for unknown method")

@@ -33,19 +33,20 @@ scopes2 = {'GBT':'gbt',
           'MeerKAT': 'mk',
           'Geocenter': 'coe'}
 
-def measure_phase(profile, template, rotate_prof=True):
+def measure_phase(profile, template, rotate_prof=True, code="classic"):
     """
     measure_phase(profile, template):
         Call FFTFIT on the profile and template to determine the
             following parameters: shift,eshift,snr,esnr,b,errb,ngood
             (returned as a tuple).  These are defined as in Taylor's
-            talk at the Royal Society.
+            talk at the Royal Society.  'code' selects the FFTFIT
+            algorithm ("classic" or "aarchiba").
     """
     c,amp,pha = fftfit.cprof(template)
     pha1 = pha[0]
     if (rotate_prof):
         pha = Num.fmod(pha-Num.arange(1,len(pha)+1)*pha1,TWOPI)
-    shift,eshift,snr,esnr,b,errb,ngood = fftfit.fftfit(profile,amp,pha)
+    shift,eshift,snr,esnr,b,errb,ngood = fftfit.fftfit(profile,amp,pha,code=code)
     return shift,eshift,snr,esnr,b,errb,ngood
 
 def usage():
@@ -66,6 +67,8 @@ usage:  get_TOAs.py [options which must include -t or -g] pfd_file
   [-o seconds, --offset=seconds]     : Add the offset in seconds to any TOAs
   [-e, --event]                      : The .pfd file was made with events
   [-r, --norotate]                   : Do not rotate the template for FFTFIT
+  [-A code, --fftfit=code]           : FFTFIT algorithm: "classic" (default) or
+                                       "aarchiba" (handles near-sinusoidal profiles)
   [-2, --tempo2]                     : Write Tempo2 format TOAs
   pfd_file                           : The .pfd file containing the folds
 
@@ -103,10 +106,10 @@ usage:  get_TOAs.py [options which must include -t or -g] pfd_file
 
 if __name__ == '__main__':
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "herfp2s:n:d:g:t:o:k:i:",
+        opts, args = getopt.getopt(sys.argv[1:], "herfp2s:n:d:g:t:o:k:i:A:",
                                    ["help", "event", "norotate", "FFTFITouts", "phase",
                                     "tempo2","subbands=", "numtoas=", "dm=", "gaussian=",
-                                    "template=", "offset=", "kill=", "kints="])
+                                    "template=", "offset=", "kill=", "kints=", "fftfit="])
                                     
     except getopt.GetoptError:
         # print help information and exit:
@@ -128,6 +131,7 @@ if __name__ == '__main__':
     offset = 0.0
     events = 0
     t2format = False
+    fftfit_code = "classic"
     kill = []
     kints = []
     for o, a in opts:
@@ -162,6 +166,11 @@ if __name__ == '__main__':
                 gaussfitfile = a
         if o in ("-t", "--template"):
             templatefilenm = a
+        if o in ("-A", "--fftfit"):
+            if a not in ("classic", "aarchiba"):
+                sys.stderr.write("Error: --fftfit must be 'classic' or 'aarchiba'\n")
+                sys.exit(2)
+            fftfit_code = a
         if o in ("-o", "--offset"):
             offset = float(a)
         if o in ("-k", "--kill"):
@@ -369,7 +378,7 @@ if __name__ == '__main__':
                     sys.stderr.write("Template length %d is not a power of two; unable to use FFTFIT.\n" % len(template))
                 else:
                     # Try using FFTFIT first
-                    shift,eshift,snr,esnr,b,errb,ngood = measure_phase(prof, template, rotate_prof)
+                    shift,eshift,snr,esnr,b,errb,ngood = measure_phase(prof, template, rotate_prof, fftfit_code)
                     # tau and tau_err are the predicted phase of the pulse arrival
                     tau, tau_err = shift/len(prof), eshift/len(prof)
                     # Note: "error" flags are shift = 0.0 and eshift = 999.0

@@ -19,7 +19,7 @@ conda-forge package these paths need to be discoverable without user-set env var
 ### Reduce/remove the Fortran dependency
 
 - Remove Fortran from the main compiled binaries, replacing it with GSL code where possible.
-- Convert the original **FFTFIT** Fortran code and its Python module to pure Python
+- **[DONE]** Convert the original **FFTFIT** Fortran code and its Python module to pure Python
   (NumPy + SciPy). This can be done independently of the rest and should get thorough tests.
   See the dedicated plan below.
 
@@ -72,6 +72,14 @@ its least-squares/covariance framework is amenable to a principled fix). Candida
 Anne's `std`-normalization `FIXME`; investigate linearization bias for broad profiles; possibly an
 empirical inflation factor validated against the coverage tests.
 
+**Status: DONE** (except the non-blocking uncertainty-calibration follow-up above). The pure-Python
+FFTFIT is the installed implementation (`python/presto/fftfit.py` + `fftfit_aarchiba.py`); the
+Fortran and its f2py build are removed. `get_TOAs.py` gained `-A/--fftfit {classic,aarchiba}`
+(default classic). Regression + `hypothesis` tests live in `python/fftfit_src/` and drive the
+installed package; the frozen oracle (`fftfit_reference.npz`) is retained so tests survive the
+Fortran's removal. End-to-end verified on two topocentric `goodfolds` folds: classic reproduces the
+prior TOAs exactly; aarchiba agrees within ~0.1 sigma.
+
 **Phased approach:**
 0. [done] Golden-reference harness: freeze inputs+outputs of the current Fortran over a broad
    synthetic battery (`fftfit_reference.npz`), plus real-data cases from a `goodfolds` fold.
@@ -80,12 +88,12 @@ empirical inflation factor validated against the coverage tests.
    frozen oracle: shift within 0.28 sigma, bailouts exact.
 2. [done] Independent cross-check: vendored Anne's algorithm agrees with the port to <=0.23 bins on
    all well-determined fits (disagreements only at snr~1.5).
-3. [in progress] Adopt Anne's code + test suite as the `"aarchiba"` method; build the method
-   selector and the shift/uncertainty adapter; resolve the uncertainty-calibration question above.
-4. Assemble behind the public API (drop-in for `get_TOAs.py`, `sum_profiles.py`) with `"classic"`
-   default; validate against real-data TOAs from `goodfolds`.
-5. Swap the build: replace the f2py target in `python/fftfit_src/meson.build` with a pure-Python
-   install, remove the Fortran, update `test_fftfit.py`.
+3. [done] Adopt Anne's code + test suite as the `"aarchiba"` method; build the method selector and
+   the shift/uncertainty adapter. (Uncertainty calibration deferred as a tracked follow-up.)
+4. [done] Assemble behind the public API (drop-in for `get_TOAs.py`, `sum_profiles.py`) with
+   `"classic"` default and a `--fftfit` selector; validated against real-data TOAs from `goodfolds`.
+5. [done] Swap the build: replace the f2py target with a pure-Python install, remove the Fortran,
+   update the tests.
 
 ### Remove the TEMPO dependency
 

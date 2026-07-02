@@ -1,7 +1,7 @@
 """Phase 1/3 regression test: pure-Python fftfit vs. the Fortran golden dataset.
 
 Feeds the exact (prof, amp, pha) inputs that were given to the Fortran (frozen in
-fftfit_reference.npz) into fftfit_py.fftfit and compares all seven outputs, per the
+fftfit_reference.npz) into fftfit.fftfit and compares all seven outputs, per the
 "match, but aim to improve" philosophy (see ROADMAP.md). Run with pytest, or:
 
     python python/fftfit_src/test_fftfit_port.py
@@ -10,7 +10,7 @@ fftfit_reference.npz) into fftfit_py.fftfit and compares all seven outputs, per 
 import os
 import numpy as np
 
-import fftfit_py
+from presto import fftfit
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REF = os.path.join(HERE, "fftfit_reference.npz")
@@ -32,7 +32,7 @@ def test_fftfit_matches_fortran():
 
     for r in meta:
         i = r["idx"]
-        out = fftfit_py.fftfit(d[f"prof_{i}"], d[f"amp_{i}"], d[f"pha_{i}"])
+        out = fftfit.fftfit(d[f"prof_{i}"], d[f"amp_{i}"], d[f"pha_{i}"])
         shift, eshift, snr, esnr, b, errb, ngood = out
 
         ref_bail = r["eshift"] >= 999.0

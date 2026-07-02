@@ -16,6 +16,8 @@ MANIFEST
 .venv*/
 dist/
 .mypy_cache/
+.hypothesis/
+.pytest_cache/
 .vscode/
 build/
 examplescripts/ppdot_*.png

@@ -1,4 +1,4 @@
-project('PRESTO_python', 'c', 'fortran',
+project('PRESTO_python', 'c',
   version: '5.2.0',
   license: 'GPL-2.0',
   default_options: [
@@ -42,11 +42,7 @@ incdir_numpy = run_command(py3,
 ).stdout().strip()
 
 inc_np = include_directories(incdir_numpy)
-incdir_f2py = incdir_numpy / '..' / '..' / 'f2py' / 'src'
-inc_f2py = include_directories(incdir_f2py)
-fortranobject_c = incdir_f2py / 'fortranobject.c'
 
-subdir('fftfit_src')
 subdir('ppgplot_src')
 subdir('presto_src')
 subdir('presto')

@@ -28,6 +28,8 @@ The BSD copyright notice and disclaimer are retained here as required by that li
 ------------------------------------------------------------------------------
 """
 
+from __future__ import annotations
+
 import numpy as np
 import scipy.optimize
 import scipy.linalg
@@ -35,18 +37,64 @@ import scipy.stats
 
 
 class FFTFITResult:
-    """Result of an FFTFIT operation: shift (turns), scale, offset, uncertainty, std."""
+    """Container for the results of an FFTFIT operation.
+
+    Which attributes are present depends on the options passed to :func:`fftfit_full`.
+
+    Attributes
+    ----------
+    shift : float
+        Phase shift, in turns (wrapped to ``[-0.5, 0.5)``), such that
+        ``shift(template, shift)`` best matches the profile.
+    scale : float
+        Multiplicative factor relating the template to the profile.
+    offset : float
+        Additive baseline relating the template to the profile.
+    uncertainty : float
+        Estimated one-sigma uncertainty in ``shift`` (turns; approximately calibrated).
+    std : float
+        Estimated per-bin noise standard deviation of the profile.
+    cov : numpy.ndarray
+        2x2 covariance matrix of the (scale, offset) least-squares fit.
+    """
 
     pass
 
 
-def wrap(a):
-    """Wrap a phase (in turns) to the range -0.5 to 0.5."""
+def wrap(a: np.ndarray | float) -> np.ndarray | float:
+    """Wrap a phase to the range ``[-0.5, 0.5)``.
+
+    Parameters
+    ----------
+    a : float or numpy.ndarray
+        Phase(s) in turns.
+
+    Returns
+    -------
+    float or numpy.ndarray
+        The wrapped phase(s).
+    """
     return (a + 0.5) % 1 - 0.5
 
 
-def shift(profile, phase):
-    """Shift a profile towards later phases by ``phase`` turns (Fourier interpolation)."""
+def shift(profile: np.ndarray, phase: float) -> np.ndarray:
+    """Shift a profile towards later phases by a fractional number of turns.
+
+    Uses Fourier interpolation; for even-length profiles the Nyquist component is left
+    unmodified.
+
+    Parameters
+    ----------
+    profile : numpy.ndarray
+        The profile to shift.
+    phase : float
+        The shift, in turns.
+
+    Returns
+    -------
+    numpy.ndarray
+        The shifted profile (same length as the input).
+    """
     c = np.fft.rfft(profile)
     if len(profile) % 2:
         c *= np.exp(-2.0j * np.pi * phase * np.arange(len(c)))
@@ -55,8 +103,24 @@ def shift(profile, phase):
     return np.fft.irfft(c, len(profile))
 
 
-def irfft_value(c, phase, n=None):
-    """Evaluate the inverse real FFT of ``c`` at an arbitrary (non-grid) ``phase``."""
+def irfft_value(c: np.ndarray, phase: np.ndarray | float, n: int | None = None) -> np.ndarray:
+    """Evaluate the inverse real FFT of ``c`` at arbitrary (non-grid) phase(s).
+
+    Parameters
+    ----------
+    c : numpy.ndarray
+        Real-FFT coefficients (as from :func:`numpy.fft.rfft`).
+    phase : float or numpy.ndarray
+        Phase(s) at which to evaluate, in turns.
+    n : int, optional
+        Effective length of the implied time series. Defaults to the natural length
+        ``2 * (len(c) - 1)``.
+
+    Returns
+    -------
+    numpy.ndarray
+        The interpolated value(s), with the same shape as ``phase``.
+    """
     natural_n = (len(c) - 1) * 2
     if n is None:
         n = natural_n
@@ -76,8 +140,46 @@ def irfft_value(c, phase, n=None):
     ).reshape(s)
 
 
-def fftfit_full(template, profile, compute_scale=True, compute_uncertainty=True, std=None):
-    """Align ``template`` to ``profile``; return an FFTFITResult (shift in turns)."""
+def fftfit_full(
+    template: np.ndarray,
+    profile: np.ndarray,
+    compute_scale: bool = True,
+    compute_uncertainty: bool = True,
+    std: float | None = None,
+) -> FFTFITResult:
+    """Align a template to a profile in the Fourier domain (Archibald's algorithm).
+
+    Forms the cross-spectrum of ``template`` and ``profile``, inverse-transforms an
+    upsampled cross-correlation to bracket the peak, refines the shift by bounded scalar
+    minimization of the interpolated CCF, and (optionally) recovers the scale, offset,
+    and shift uncertainty by linear least squares.
+
+    Parameters
+    ----------
+    template : numpy.ndarray
+        The template representing the ideal pulse profile.
+    profile : numpy.ndarray
+        The observed profile to align the template with.
+    compute_scale : bool, optional
+        If True, also fit the scale and offset relating template to profile.
+    compute_uncertainty : bool, optional
+        If True, also estimate the shift uncertainty (implies ``compute_scale``).
+    std : float, optional
+        Known per-bin noise standard deviation; if omitted it is estimated from the
+        fit residuals.
+
+    Returns
+    -------
+    FFTFITResult
+        The match result. ``shift`` (turns) is always set; ``scale``/``offset`` are set
+        when ``compute_scale`` is True; ``uncertainty``/``std``/``cov`` when
+        ``compute_uncertainty`` is True.
+
+    Raises
+    ------
+    ValueError
+        If the bounded minimization fails to converge.
+    """
     upsample = 8
     t_c = np.fft.rfft(template)
     if len(template) % 2 == 0:
@@ -143,7 +245,20 @@ def fftfit_full(template, profile, compute_scale=True, compute_uncertainty=True,
     return r
 
 
-def fftfit_basic(template, profile):
-    """Return just the shift (in turns) needed to align ``template`` with ``profile``."""
+def fftfit_basic(template: np.ndarray, profile: np.ndarray) -> float:
+    """Return just the shift needed to align a template with a profile.
+
+    Parameters
+    ----------
+    template : numpy.ndarray
+        The template representing the ideal pulse profile.
+    profile : numpy.ndarray
+        The observed profile to align the template with.
+
+    Returns
+    -------
+    float
+        The shift in turns (wrapped to ``[-0.5, 0.5)``).
+    """
     r = fftfit_full(template, profile, compute_scale=False, compute_uncertainty=False)
     return r.shift
