@@ -160,10 +160,50 @@ should they ever resume, require an ERFA update).
 
 Replace the in-tree median and statistics calls with well-tested GSL equivalents.
 
-### Drop support for retired pulsar backends
+### Docstrings, typehints, and ruff
 
-Remove all code for old backends (Spigot, BCPM, WAPP, and others). This is believed to affect
-only the `readfile` code path.
+Add these things to at least the python routines python/presto, but especially psr_utils.py, 
+prepfold.py, psrfits.py, spectra.py, filterbank.py, and sifting.py.
+
+### Add Descriptions etc in .cli files for the man pages
+
+Have Claude fill in Descriptions, Author, and SeeAlso fields in the pyCLIG .cli files to improve
+the generated man pages. Read the code, `docs/PRESTO_search_tutorial.odp`, and the `FAQ.md` for 
+relevant information. I would like the man files to start being more useful since there really 
+isn't great documentation for PRESTO, in general. Include common usage examples for the main 
+PRESTO routines (`rfifind`, `[mpi]prep*`, `accelsearch`, `realfft`, and `show_pfd`). Once complete,
+re-generate all the CLIG-based files (except prepfold_multi, given the issues!). On a related note,
+the relevant information in `prepfold_multi.1` should also go in a new section in the `FAQ.md`.
+
+### As an extension to the previous, figure out man page installation
+
+Discuss with Claude ways to do this seamlessly and usefully, especially once we (soon!) 
+get PRESTO into conda-forge.
+
+### Clean up old and unused code
+
+Ask Claude to examine files in `src`, `include`, `tests`, and in `python` to find things that
+can safely be removed. These should be things that have not been significantly touched in a
+a long while, are irrelevant because of other code, or are not used at all (like `showmulti`.
+I don't even remember what that is!). I would like to approve a list item by item for those
+things to be removed.
+
+### Replace code of questionable origin or which can be replaced with GSL or ERFA (or scipy)
+
+- One or two of the .c files (e.g. `amoeba.c` and `median.c`, plus parts of `misc_utils.c`) 
+  originate in Numerical Recipes. It would be great to replace those.
+- Are `solvopt.c` and `apprgrdn.c` used anywhere? If so, replace with GSL?  Else remove.
+- Replace the randlib stuff used in `makedata.c` (and elsewhere?) with GSL.
+- Replace various little time and coordinate utilites (e.g. `cldj.c`, some routines in 
+  `misc_utils.c`, and the calculations in `mjd2cal` and `cal2mjd` with ERFA calls.)
+
+### Develop a plan, with scripts, for doing proper tagged releases
+
+This will be important for simplfying updates when PRESTO is on conda-forge
+
+### Develop scripts and recipes for getting PRESTO onto conda-forge
+
+When that is complete (and integration into conda-forge is imminent), we will tag v6.
 
 ## Nice-to-haves
 
@@ -186,3 +226,13 @@ build/rpath issues early.
 generator (`pyclig`) output is not yet correct/complete on its own. Fix so `prepfold_multi`
 regenerates cleanly from its `.cli` like every other tool. Until then, do not blindly overwrite
 the hand-edits when regenerating.
+
+## Postponed, potentially indefinitely
+
+### Drop support for retired pulsar backends
+
+(Note: Postponed since all the code now compiles without warnings and will likely not be touched
+again. And we occasionally find old files from those machines where it is (very!) useful to be 
+able to see what they are via `readfile`.)
+Remove all code for old backends (Spigot, BCPM, WAPP, and others). This is believed to affect 
+only the `readfile` code path.
