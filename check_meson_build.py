@@ -73,17 +73,18 @@ else:
         )
 
 print(
-    f"Checking for {bcolors.BOLD}TEMPO{bcolors.ENDC} as an environment variable:",
+    f"Checking for {bcolors.BOLD}TEMPO2{bcolors.ENDC} as an environment variable:",
     end="",
 )
-tempo = os.environ.get("TEMPO")
-if tempo is None:
+tempo2 = os.environ.get("TEMPO2")
+if tempo2 is None:
     print(f"  {bcolors.FAIL}no{bcolors.ENDC}")
     print(
-        f"\n  {bcolors.WARNING}WARNING:{bcolors.ENDC} TEMPO environment variable is not set!"
+        f"\n  {bcolors.WARNING}WARNING:{bcolors.ENDC} TEMPO2 environment variable is not set!"
     )
-    print("  You need to set it to the location of the TEMPO code.")
-    bail()
+    print("  It is only needed for polyco generation (e.g. prepfold -timing).")
+    print("  conda-forge's tempo2 package sets it automatically; for a source")
+    print("  build, point it at the tempo2 runtime directory.")
 else:
     print(f"  {bcolors.OKGREEN}yes{bcolors.ENDC}")
 
@@ -172,5 +173,7 @@ if libinstall not in ldlibpath:
 else:
     print(f"  {bcolors.OKGREEN}yes{bcolors.ENDC}")
 
-print(f"\n{bcolors.OKGREEN}Everything looks good! Let's try to build:{bcolors.ENDC}\n"
-    "  meson compile -C build\n  meson install -C build")
+print(
+    f"\n{bcolors.OKGREEN}Everything looks good! Let's try to build:{bcolors.ENDC}\n"
+    "  meson compile -C build\n  meson install -C build"
+)

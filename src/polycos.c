@@ -2,7 +2,7 @@
 
 Sample code:
 
- if(!getpoly(mjd, &dm, fppoly, pulsarname)) 
+ if(!getpoly(mjd, &dm, fppoly, pulsarname))
  {printf("Polycos not found!\n"); exit(1);}
 
  mjd is the MJD of the start of the observation (or middle)
@@ -18,8 +18,8 @@ Sample code:
  mjd0 is integer day
  mjd1 is the fractional day (topocentric UTC)
  tbin is current phase (of central frequency; you need to add dm offset)
- fbin is bin increment per sample.  
- 
+ fbin is bin increment per sample.
+
  Generally it's a good idea to
  recalculate phase and p every now and then, depending on how
  fast/relativistic the pulsar is.  I often do it every ~100 msec.
@@ -41,14 +41,71 @@ static int isets, nblk, ncoeff, icurr;
 
 extern int get_psr_from_parfile(char *parfilenm, double epoch, psrparams * psr);
 
-char *make_polycos(char *parfilenm, infodata * idata, char *polycofilenm, int debug_tempo)
+/* PRESTO telescope name (idata->telescope) to the tempo2 observatory */
+/* name, the old TEMPO tz site code, and the track length (i.e. max   */
+/* hour angle) used for polyco generation.  Note that the old TEMPO   */
+/* codes for ATA ('s' = SHAO 65m!) and KAT-7 ('k' = FAST!) were       */
+/* actually wrong -- the tempo2 names fix that.                       */
+typedef struct polyco_scope {
+    char name[12];              /* PRESTO telescope name */
+    char t2name[12];            /* tempo2 observatory name */
+    char t1code;                /* TEMPO tz.in site code */
+    int maxha;                  /* Track length (hours) */
+} polyco_scope;
+
+static polyco_scope pscopes[] = {
+    {"GBT", "gbt", '1', 12},
+    {"Arecibo", "ao", '3', 3},
+    {"VLA", "vla", '6', 6},
+    {"Parkes", "pks", '7', 12},
+    {"Jodrell", "jb", '8', 12},
+    {"GB43m", "gb140", 'a', 12},
+    {"GB 140FT", "gb140", 'a', 12},
+    {"NRAO20", "gb140", 'a', 12},
+    {"Nancay", "ncy", 'f', 4},
+    {"Effelsberg", "eff", 'g', 12},
+    {"ATA", "ata", 's', 12},
+    {"LOFAR", "lofar", 't', 12},
+    {"WSRT", "wsrt", 'i', 12},
+    {"FAST", "fast", 'k', 5},
+    {"GMRT", "gmrt", 'r', 12},
+    {"CHIME", "chime", 'y', 1},
+    {"MWA", "mwa", 'u', 12},
+    {"LWA", "lwa1", 'x', 12},
+    {"SRT", "srt", 'z', 12},
+    {"MeerKAT", "meerkat", 'm', 12},
+    {"KAT-7", "k7", 'k', 12},
+    {"Geocenter", "coe", '0', 12},
+    {"Barycenter", "@", '@', 12},   /* Also the default */
+};
+
+static polyco_scope *find_polyco_scope(char *telescope)
+/* Return the site info for polyco generation, defaulting to the barycenter */
 {
-    FILE *tmpfile;
-    int tracklen;
+    int ii, numscopes = sizeof(pscopes) / sizeof(polyco_scope);
+
+    for (ii = 0; ii < numscopes; ii++) {
+        if (strcmp(telescope, pscopes[ii].name) == 0)
+            return &pscopes[ii];
+    }
+    printf("Defaulting to barycenter for polyco generation...\n");
+    return &pscopes[numscopes - 1];
+}
+
+char *make_polycos(char *parfilenm, infodata * idata, char *polycofilenm, int debug)
+/* Generate polycos for the observation described by idata using the   */
+/* parfile parfilenm, and copy them to polycofilenm.  Returns the      */
+/* pulsar name from the parfile.  This runs "tempo2 -tempo1 -polyco",  */
+/* which writes TEMPO1-format polycos, so the external 'tempo2'        */
+/* executable (with its $TEMPO2 runtime directory, both available      */
+/* from conda-forge) is required.  TEMPO itself is no longer used.     */
+{
+    FILE *checkfile;
     double T, fmid = 0.0, epoch;
-    char *command, *psrname, scopechar;
+    char *command, *psrname;
     char *pcpathnm, *pcfilenm;
     psrparams psr;
+    polyco_scope *site;
 
     /* Get the path and name of the output polycofilenm */
     split_path_file(polycofilenm, &pcpathnm, &pcfilenm);
@@ -71,12 +128,11 @@ char *make_polycos(char *parfilenm, infodata * idata, char *polycofilenm, int de
                 tmpdir);
         exit(-1);
     }
-    if (debug_tempo) {
-        fprintf(stderr, "Debugging TEMPO call:  Using temp directory '%s'\n",
+    if (debug) {
+        fprintf(stderr, "Debugging tempo2 call:  Using temp directory '%s'\n",
                 tmpdir);
     }
 
-    
     /* Copy the parfile to the temp directory */
     command = (char *) calloc(strlen(parfilenm) + strlen(tmpdir) +
                               strlen(pcfilenm) + strlen(pcpathnm) + 200, 1);
@@ -92,81 +148,128 @@ char *make_polycos(char *parfilenm, infodata * idata, char *polycofilenm, int de
     char *origdir = getcwd(NULL, 0);
     chdir(tmpdir);
 
-    /* Write tz.in */
-    if (strcmp(idata->telescope, "GBT") == 0) {
-        scopechar = '1';
-        tracklen = 12;
-    } else if (strcmp(idata->telescope, "Arecibo") == 0) {
-        scopechar = '3';
-        tracklen = 3;
-    } else if (strcmp(idata->telescope, "VLA") == 0) {
-        scopechar = '6';
-        tracklen = 6;
-    } else if (strcmp(idata->telescope, "Parkes") == 0) {
-        scopechar = '7';
-        tracklen = 12;
-    } else if (strcmp(idata->telescope, "Jodrell") == 0) {
-        scopechar = '8';
-        tracklen = 12;
-    } else if ((strcmp(idata->telescope, "GB43m") == 0) ||
-               (strcmp(idata->telescope, "GB 140FT") == 0) ||
-               (strcmp(idata->telescope, "NRAO20") == 0)) {
-        scopechar = 'a';
-        tracklen = 12;
-    } else if (strcmp(idata->telescope, "Nancay") == 0) {
-        scopechar = 'f';
-        tracklen = 4;
-    } else if (strcmp(idata->telescope, "Effelsberg") == 0) {
-        scopechar = 'g';
-        tracklen = 12;
-    } else if (strcmp(idata->telescope, "ATA") == 0) {
-        scopechar = 's';
-        tracklen = 12;
-    } else if (strcmp(idata->telescope, "LOFAR") == 0) {
-        scopechar = 't';
-        tracklen = 12;
-    } else if (strcmp(idata->telescope, "WSRT") == 0) {
-        scopechar = 'i';
-        tracklen = 12;
-    } else if (strcmp(idata->telescope, "FAST") == 0) {
-        scopechar = 'k';
-        tracklen = 5;
-    } else if (strcmp(idata->telescope, "GMRT") == 0) {
-        scopechar = 'r';
-        tracklen = 12;
-    } else if (strcmp(idata->telescope, "CHIME") == 0) {
-        scopechar = 'y';
-        tracklen = 1;
-    } else if (strcmp(idata->telescope, "MWA") == 0) {
-        scopechar = 'u';
-        tracklen = 12;
-    } else if (strcmp(idata->telescope, "LWA") == 0) {
-        scopechar = 'x';
-        tracklen = 12;
-    } else if (strcmp(idata->telescope, "SRT") == 0) {
-        scopechar = 'z';
-        tracklen = 12;
-    } else if (strcmp(idata->telescope, "MeerKAT") == 0) {
-        scopechar = 'm';
-        tracklen = 12;
-    } else if (strcmp(idata->telescope, "KAT-7") == 0) {
-        scopechar = 'k';
-        tracklen = 12;
-    } else if (strcmp(idata->telescope, "Geocenter") == 0) {
-        scopechar = '0';
-        tracklen = 12;
-    } else {                    /*  Barycenter */
-        printf("Defaulting to barycenter for polyco generation...\n");
-        scopechar = '@';
-        tracklen = 12;
+    /* Identify the observatory and observing band */
+    site = find_polyco_scope(idata->telescope);
+    if (strcmp(site->t2name, "@") != 0 && strcmp(site->t2name, "coe") != 0) {
+        fmid = idata->freq + (idata->num_chan / 2 - 0.5) * idata->chan_wid;
+    } else {
+        fmid = 0.0;
     }
+    printf("Generating polycos for PSR %s.\n", psr.jname);
+    sprintf(command,
+            "tempo2 -tempo1 -f pulsar.par -polyco \"%d %d 60 12 %d %s %.5f\" %s",
+            idata->mjd_i - 1, (int) ceil(epoch + T), site->maxha,
+            site->t2name, fmid, debug ? "> tempo2.out 2>&1" : "> /dev/null 2>&1");
+    if (debug)
+        fprintf(stderr, "Debugging tempo2 call:  '%s'\n", command);
+    if (system(command) != 0) {
+        fprintf(stderr,
+                "\nError:  Problem running tempo2 in '%s' for make_polycos().\n"
+                "        Is 'tempo2' on your PATH, with $TEMPO2 pointing at its\n"
+                "        runtime directory?  (Both are available on conda-forge.)\n\n",
+                tmpdir);
+        exit(-1);
+    }
+    /* tempo2 -polyco writes the TEMPO1-format polycos to polyco_new.dat */
+    if ((checkfile = fopen("polyco_new.dat", "r")) == NULL) {
+        fprintf(stderr,
+                "\nError:  tempo2 did not generate polycos in '%s' for make_polycos().\n"
+                "        Re-run with -debug to see the tempo2 output.\n\n", tmpdir);
+        exit(-1);
+    }
+    fclose(checkfile);
+    sprintf(command, "cp polyco_new.dat %s/%s", pcpathnm, pcfilenm);
+    if (system(command) != 0) {
+        fprintf(stderr,
+                "\nError:  Cannot copy polyco_new.dat in '%s' to '%s' in make_polycos()\n\n",
+                tmpdir, polycofilenm);
+        exit(-1);
+    }
+    if (!debug) {
+        remove("polyco_new.dat");
+        remove("newpolyco.dat");
+        remove("polyco.tim");
+        remove("pulsar.par");
+    }
+    chdir(origdir);
+    free(origdir);
+    free(pcpathnm);
+    free(pcfilenm);
+    free(command);
+    if (!debug)
+        remove(tmpdir);
+    psrname = (char *) calloc(strlen(psr.jname) + 1, sizeof(char));
+    strcpy(psrname, psr.jname);
+    return psrname;
+}
+
+
+char *make_polycos_tempo1(char *parfilenm, infodata * idata, char *polycofilenm,
+                          int debug_tempo)
+/* The original TEMPO-based version of make_polycos(), retained only   */
+/* so that the tempo2 implementation can be validated against it (see  */
+/* check_polycos_t2.c).  Requires the external 'tempo' executable.     */
+{
+    FILE *tmpfile;
+    int tracklen;
+    double T, fmid = 0.0, epoch;
+    char *command, *psrname, scopechar;
+    char *pcpathnm, *pcfilenm;
+    psrparams psr;
+    polyco_scope *site;
+
+    /* Get the path and name of the output polycofilenm */
+    split_path_file(polycofilenm, &pcpathnm, &pcfilenm);
+
+    /* Read the parfile */
+    epoch = idata->mjd_i + idata->mjd_f;
+    T = (idata->dt * idata->N) / SECPERDAY;
+    if (!get_psr_from_parfile(parfilenm, epoch, &psr)) {
+        fprintf(stderr,
+                "\nError:  Cannot read parfile '%s' in make_polycos_tempo1()\n\n",
+                parfilenm);
+        exit(-1);
+    }
+
+    /* Generate temp directory */
+    char tmpdir[] = "/tmp/polycoXXXXXX";
+    if (mkdtemp(tmpdir) == NULL) {
+        fprintf(stderr,
+                "\nError:  Cannot generate temp dir '%s' in make_polycos_tempo1()\n\n",
+                tmpdir);
+        exit(-1);
+    }
+    if (debug_tempo) {
+        fprintf(stderr, "Debugging TEMPO call:  Using temp directory '%s'\n",
+                tmpdir);
+    }
+
+    /* Copy the parfile to the temp directory */
+    command = (char *) calloc(strlen(parfilenm) + strlen(tmpdir) +
+                              strlen(pcfilenm) + strlen(pcpathnm) + 200, 1);
+    sprintf(command, "cp %s %s/pulsar.par", parfilenm, tmpdir);
+    if (system(command) != 0) {
+        fprintf(stderr,
+                "\nError:  Cannot copy parfile '%s' to tmpdir '%s' in make_polycos_tempo1()\n\n",
+                parfilenm, tmpdir);
+        exit(-1);
+    }
+
+    /* change to temp dir */
+    char *origdir = getcwd(NULL, 0);
+    chdir(tmpdir);
+
+    /* Write tz.in */
+    site = find_polyco_scope(idata->telescope);
+    scopechar = site->t1code;
+    tracklen = site->maxha;
     /* For optical, X-ray, or gamma-ray data */
     if (scopechar != '@' && scopechar != '0') {
         fmid = idata->freq + (idata->num_chan / 2 - 0.5) * idata->chan_wid;
     } else {
         fmid = 0.0;
     }
-    printf("Generating polycos for PSR %s.\n", psr.jname);
+    printf("Generating TEMPO polycos for PSR %s.\n", psr.jname);
     tmpfile = chkfopen("tz.in", "w");
     fprintf(tmpfile, "%c %d 60 12 430\n\n\n%s 60 12 %d %.5f\n",
             scopechar, tracklen, psr.jname, tracklen, fmid);
@@ -181,14 +284,14 @@ char *make_polycos(char *parfilenm, infodata * idata, char *polycofilenm, int de
     }
     if (system(command) != 0) {
         fprintf(stderr,
-                "\nError:  Problem running TEMPO in '%s' for make_polycos()\n\n",
+                "\nError:  Problem running TEMPO in '%s' for make_polycos_tempo1()\n\n",
                 tmpdir);
         exit(-1);
     } else {
         sprintf(command, "cp polyco.dat %s/%s", pcpathnm, pcfilenm);
         if (system(command) != 0) {
             fprintf(stderr,
-                    "\nError:  Cannot copy polyco.dat in '%s' to '%s' make_polycos()\n\n",
+                    "\nError:  Cannot copy polyco.dat in '%s' to '%s' make_polycos_tempo1()\n\n",
                     tmpdir, polycofilenm);
             exit(-1);
         }
@@ -205,12 +308,12 @@ char *make_polycos(char *parfilenm, infodata * idata, char *polycofilenm, int de
     free(pcpathnm);
     free(pcfilenm);
     free(command);
-    if (!debug_tempo) remove(tmpdir);
+    if (!debug_tempo)
+        remove(tmpdir);
     psrname = (char *) calloc(strlen(psr.jname) + 1, sizeof(char));
     strcpy(psrname, psr.jname);
     return psrname;
 }
-
 
 
 int getpoly(double mjd, double duration, double *dm, FILE * fp, char *pname)
@@ -225,15 +328,16 @@ int getpoly(double mjd, double duration, double *dm, FILE * fp, char *pname)
 */
 
     char name0[15], testname[15], date0[15], binpha[16];
+    char obsstr[16];
     char dummy[3][30];
     char buffer[160];
     double aphi0b[30], adphib[30];
     double dm0, z40, mjdend;
-    float r, tfreq;
+    float r;
     long int mjddummy;
     int binary;
 
-    int j, k, kk, len, jobs;
+    int j, k, kk, len;
     int nblk0, ncoeff0;
     double mjdcheck;
 
@@ -245,7 +349,10 @@ int getpoly(double mjd, double duration, double *dm, FILE * fp, char *pname)
             sscanf(buffer, "%s%s%f%ld%lf%lf%lf",
                    name0, date0, &r, &mjddummy, &mjd1mid[j], &dm0, &z40);
             fgets(buffer, 80, fp);
-            sscanf(buffer, "%lf%lf%i%d%d", &rphase[j], &f0[j], &jobs, &nblk0,
+            /* The observatory field is a numeric TEMPO code from TEMPO */
+            /* polycos but a site name (e.g. "gbt") from tempo2 ones,   */
+            /* so read it as a string (it is unused regardless).        */
+            sscanf(buffer, "%lf%lf%15s%d%d", &rphase[j], &f0[j], obsstr, &nblk0,
                    &ncoeff0);
             fgets(buffer, 80, fp);
             sscanf(buffer, "%f%16c", &r, binpha);
@@ -265,7 +372,6 @@ int getpoly(double mjd, double duration, double *dm, FILE * fp, char *pname)
             if (mjdmid[j] < 20000)
                 mjdmid[j] += 39126.;
             z4[j] = z40;
-            tfreq = r;
             *dm = dm0;
             binary = (binpha[0] != ' ');
             mjdcheck = mjdmid[j] + mjd1mid[j];

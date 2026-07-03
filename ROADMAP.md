@@ -131,8 +131,21 @@ prior TOAs exactly; aarchiba agrees within ~0.1 sigma.
   `barycenter_tempo()` and `src/check_bary_erfa.c` re-runs the full comparison anytime
   (needs TEMPO); `tests/test_barycenter.py` checks against frozen TEMPO values
   (`tests/bary_tempo_reference.txt`) with no TEMPO needed. The `ephem` argument is now
-  ignored. Note: polycos (`prepfold -timing`, `polycos.py`) still require TEMPO.
-- Polyco creation: use **tempo2** with tempo1-style predictors.
+  ignored.
+- **[DONE]** Polyco creation: use **tempo2** (which is on conda-forge and sets `$TEMPO2`
+  automatically) instead of TEMPO. `make_polycos()` in `src/polycos.c` and
+  `polycos.create_polycos()` now run `tempo2 -tempo1 -f par -polyco "mjd1 mjd2 nspan
+  ncoeff maxha sitename freq"`, which writes TEMPO1-format polycos that the existing
+  `getpoly()`/`phcalc()` readers consume (one reader fix: the line-2 observatory field is
+  now a site name like "gbt", so it is parsed as a string). Sites are passed as tempo2
+  observatory *names* — tempo2's tempo1-code alias table is conflicting ('k' is e-Merlin,
+  'y' is aliased to Jodrell), and the old TEMPO codes had two latent bugs anyway (ATA 's'
+  was SHAO 65m; KAT-7 'k' was FAST). Validated vs TEMPO with `src/check_polycos_t2.c`
+  (needs both programs): constant phase offsets 0.001–0.023 μs, differential drift
+  ≤ 3e-6 turns, |Δf|/f ≤ 4e-11; all polyco-based prepfold regression folds pass against
+  the *unmodified* goodfolds references and `get_TOAs.py` TOAs are identical. The old
+  generator is retained as `make_polycos_tempo1()`. **With this plus ERFA barycentering,
+  PRESTO no longer needs TEMPO at all.** (tempo2 caveat: no conda-forge osx-arm64 build.)
 
 ### Adopt ERFA/SOFA for astronomy/time routines
 

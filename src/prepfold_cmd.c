@@ -53,7 +53,7 @@ static Cmdline cmd = {
     /* absphaseP = */ 0,
     /***** -barypolycos: Force the use of polycos for barycentered events */
     /* barypolycosP = */ 0,
-    /***** -debug: Show debugging output when calling TEMPO for polycos */
+    /***** -debug: Show debugging output when calling tempo2 for polycos */
     /* debugP = */ 0,
     /***** -samples: Treat the data as samples and not as finite-duration integrated data */
     /* samplesP = */ 0,
@@ -651,7 +651,7 @@ void showOptionValues(void)
         printf("-barypolycos found:\n");
     }
 
-    /***** -debug: Show debugging output when calling TEMPO for polycos */
+    /***** -debug: Show debugging output when calling tempo2 for polycos */
     if (!cmd.debugP) {
         printf("-debug not found.\n");
     } else {
@@ -1332,7 +1332,7 @@ void usage(void)
     fputs("         -zerodm: Subtract the mean of all channels from each sample (i.e. remove zero DM)\n", stderr);
     fputs("       -absphase: Use the absolute phase associated with polycos\n", stderr);
     fputs("    -barypolycos: Force the use of polycos for barycentered events\n", stderr);
-    fputs("          -debug: Show debugging output when calling TEMPO for polycos\n", stderr);
+    fputs("          -debug: Show debugging output when calling tempo2 for polycos\n", stderr);
     fputs("        -samples: Treat the data as samples and not as finite-duration integrated data\n", stderr);
     fputs("      -normalize: Bandpass flatten the data by normalizing the subbands\n", stderr);
     fputs("       -numwapps: Number of WAPPs used with contiguous frequencies\n", stderr);

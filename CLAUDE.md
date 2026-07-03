@@ -20,7 +20,8 @@ Planned larger changes (conda-forge packaging, dependency removal, etc.) live in
 
 The build uses **meson** (v5+ switched away from Makefiles). The two halves — C code and the
 Python package — are built and installed separately. Requires a `PRESTO` environment variable
-pointing at this top-level directory, plus `TEMPO` and `PGPLOT_DIR`. Note: `$PRESTO/bin` and
+pointing at this top-level directory, plus `PGPLOT_DIR` (and `TEMPO2` if generating polycos;
+conda-forge's tempo2 sets it automatically). Note: `$PRESTO/bin` and
 `$PRESTO/lib` should **not** be on `PATH`/`LD_LIBRARY_PATH`/`PYTHONPATH` (unlike older versions).
 
 ```sh
@@ -75,8 +76,9 @@ currently no CI (the stale Travis setup was removed; see ROADMAP.md).
 - `install: false` on utility/experimental executables that are built but not installed.
 
 Key external dependencies: **FFTW3 single-precision** (`fftw3f` — the `f` matters), GSL, **ERFA**
-(barycentering — no TEMPO needed), glib-2.0, cfitsio, PGPLOT/cpgplot, X11, libpng, and optional
-OpenMP and MPI (MPI gates `mpiprepsubband`).
+(barycentering), glib-2.0, cfitsio, PGPLOT/cpgplot, X11, libpng, and optional OpenMP and MPI
+(MPI gates `mpiprepsubband`). The **tempo2** executable is called at runtime for polyco
+generation (`prepfold -timing`); TEMPO is not used at all anymore.
 
 ### Command-line parsing is generated (`clig/` → `src/*_cmd.c`)
 

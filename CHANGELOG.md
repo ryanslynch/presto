@@ -1,4 +1,14 @@
 ## Development (unreleased, since v5.3.1):
+ * Polyco generation (e.g. `prepfold -timing`) now uses **tempo2** (which is on
+   conda-forge) rather than TEMPO, via `tempo2 -tempo1 -polyco`, which writes
+   TEMPO1-format polycos.  Together with the ERFA barycentering below, **PRESTO no
+   longer needs TEMPO at all**.  Validated against TEMPO-generated polycos: constant
+   phase offsets of only 0.001-0.023 microsec, differential drift <= 3e-6 turns,
+   |df|/f <= 4e-11, and identical TOAs from `get_TOAs.py`; the comparison can be
+   re-run anytime with `check_polycos_t2` (needs both tempo and tempo2).  The old
+   generator is retained as `make_polycos_tempo1()`.  This also fixed two latent
+   site-code bugs: ATA polycos were generated for SHAO 65m, and KAT-7 polycos for
+   FAST (the tempo2 observatory names are unambiguous).
  * Barycentering no longer uses TEMPO!  `barycenter()` is now computed in-process
    with the [ERFA](https://github.com/liberfa/erfa) library (a new build requirement,
    downloaded and built automatically by meson if not installed), using ERFA's

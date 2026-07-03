@@ -49,8 +49,15 @@ def load_reference() -> list[dict]:
             ra, dec, topo, bary, voverc = line[2:].split()
             key = (obs, ra, dec)
             case = cases.setdefault(
-                key, {"obs": obs, "ra": ra, "dec": dec,
-                      "topo": [], "bary": [], "voverc": []}
+                key,
+                {
+                    "obs": obs,
+                    "ra": ra,
+                    "dec": dec,
+                    "topo": [],
+                    "bary": [],
+                    "voverc": [],
+                },
             )
             case["topo"].append(float(topo))
             case["bary"].append(float(bary))
@@ -58,8 +65,9 @@ def load_reference() -> list[dict]:
     return list(cases.values())
 
 
-@pytest.mark.parametrize("case", load_reference(),
-                         ids=lambda c: f"{c['obs'].strip()}_{c['ra']}_{c['dec']}")
+@pytest.mark.parametrize(
+    "case", load_reference(), ids=lambda c: f"{c['obs'].strip()}_{c['ra']}_{c['dec']}"
+)
 def test_barycenter_vs_tempo_reference(case: dict) -> None:
     """ERFA barycentering must agree with the frozen TEMPO results."""
     topo = np.asarray(case["topo"])
@@ -67,8 +75,7 @@ def test_barycenter_vs_tempo_reference(case: dict) -> None:
     refv = np.asarray(case["voverc"])
     bary = np.zeros_like(topo)
     voverc = np.zeros_like(topo)
-    presto.barycenter(topo, bary, voverc, case["ra"], case["dec"],
-                      case["obs"], "DE405")
+    presto.barycenter(topo, bary, voverc, case["ra"], case["dec"], case["obs"], "DE405")
     dt = (bary - reft) * SECPERDAY
     assert np.max(np.abs(dt)) < MAX_ABS_DIFF_S
     assert np.max(np.abs(voverc - refv)) < MAX_VOVERC_DIFF
@@ -82,8 +89,7 @@ def test_barycenter_roundtrip_sanity() -> None:
     topo = np.array([60300.25, 60300.35])
     bary = np.zeros_like(topo)
     voverc = np.zeros_like(topo)
-    presto.barycenter(topo, bary, voverc, "17:48:04.85", "-24:46:45.0",
-                      "GB", "DE405")
+    presto.barycenter(topo, bary, voverc, "17:48:04.85", "-24:46:45.0", "GB", "DE405")
     assert np.all(np.abs(bary - topo) * SECPERDAY < 600.0)
     assert np.all(np.abs(voverc) < 1.2e-4)
 

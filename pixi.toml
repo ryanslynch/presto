@@ -13,8 +13,8 @@
 # Notes:
 #  - ERFA is not on conda-forge; the meson subproject fallback builds it
 #    automatically (see subprojects/erfa.wrap).
-#  - TEMPO is not on conda-forge either.  It is only needed for polycos
-#    (e.g. prepfold -timing): build it separately and set $TEMPO.
+#  - tempo2 (used for polyco generation, e.g. prepfold -timing) comes from
+#    conda-forge, which also sets $TEMPO2.  TEMPO is no longer needed at all.
 
 [workspace]
 name = "presto"
@@ -33,6 +33,7 @@ scipy = "*"
 astropy = "*"
 matplotlib = "*"
 pytest = "*"
+ruff = "*"
 fftw = "*"
 gsl = "*"
 cfitsio = "*"
@@ -40,6 +41,14 @@ glib = "*"
 libpng = "*"
 xorg-libx11 = "*"
 pgplot = "*"
+
+# tempo2 (polyco generation, e.g. prepfold -timing) is not packaged for
+# osx-arm64 on conda-forge; build it manually there if you need polycos
+[target.linux-64.dependencies]
+tempo2 = "*"
+
+[target.osx-64.dependencies]
+tempo2 = "*"
 
 [activation.env]
 PRESTO = "$PIXI_PROJECT_ROOT"

@@ -14,8 +14,8 @@ Use `pixi run install-py-editable` after building if you want live-editable
 pure-Python modules while debugging. The pixi tasks use their own meson build
 directory (`build-pixi/`), so they will not interfere with a manually managed
 `build/`. Notes: ERFA is built automatically (it is not on conda-forge), and
-TEMPO (needed only for polycos) must still be built separately with `$TEMPO`
-set.
+tempo2 (used for polyco generation) is included from conda-forge — no TEMPO
+installation is needed at all.
 
 ## td;dr for experienced PRESTO builders:
 With v5, we have switched to building and installing with [meson](https://mesonbuild.com/).
@@ -115,11 +115,11 @@ Note that you can uninstall everything via:
 
     If you want to try to compile your own (good luck!), you need the X-windows and postscript drivers at a minimum.
 
-3.  **Install [TEMPO](http://tempo.sourceforge.net/)**
+3.  **Install [tempo2](https://bitbucket.org/psrsoft/tempo2/)** (only needed for polycos)
 
-    Make sure to set the `TEMPO` environment variable so that it points to the top level of the `TEMPO` code base.
+    tempo2 is used for polyco generation (e.g. `prepfold -timing`); if you don't fold with polycos you can skip it. The easiest install is from conda-forge (`conda`/`pixi install tempo2`), which also sets the required `TEMPO2` runtime environment variable automatically (note: there is no conda-forge build for osx-arm64). If you build from source instead, set `TEMPO2` to the runtime directory yourself.
 
-    Note: as of v5.3.1, TEMPO is no longer used for barycentering (that is now done in-process via ERFA), but it is still required for polyco generation (e.g. `prepfold -timing`).
+    Note: as of the post-v5.3.1 development code, **TEMPO is no longer used at all** — barycentering is done in-process via ERFA, and polycos come from tempo2.
 
 4.  **Install [ERFA](https://github.com/liberfa/erfa)** (optional -- can be automatic!)
 
@@ -231,7 +231,7 @@ Couple quick trouble-shooting tips if you are having problems compiling and runn
 
 1. Environment variables!  Use `python check_meson_build.py`!
    - Is `PRESTO` set to the top-level PRESTO source directory?
-   - Is `TEMPO` set to the top-level TEMPO source directory?
+   - Is `TEMPO2` set to the tempo2 runtime directory (only needed for polycos; automatic with conda-forge's tempo2)?
    - Is `PGPLOT_DIR` set to the location of the PGPLOT utility files?
      (Note: On Ubuntu, that should be `/usr/lib/pgplot5`)
    - Is `$PRESTO/bin` in your `PATH`? (It should *not* be!)
@@ -263,7 +263,7 @@ Couple quick trouble-shooting tips if you are having problems compiling and runn
 
 3. After the Python modules are built and installed, and you run `python tests/test_presto_python.py`, if you get a memory error, please contact Scott! I think that these issues are fixed, but if they are not, we will need to change the build process a tiny bit with a special variable define.
    
-4. If you are having trouble with PRESTO creating polycos, you can use `prepfold` with the `-debug` option when folding using `-timing`. That will show you the `TEMPO` call and keep all of the (usually) temporary output files.
+4. If you are having trouble with PRESTO creating polycos, you can use `prepfold` with the `-debug` option when folding using `-timing`. That will show you the `tempo2` call and keep all of the (usually) temporary output files.
 
 5. If the python build or install is failing, it can be useful to save and inspect the build directory via `pip install --config-settings=builddir=build .`.
 
@@ -283,7 +283,7 @@ If you are using **MacOS**, Paul Ray has been running PRESTO a lot and knows sev
     % sudo port select --set  virtualenvwrapper virtualenvwrapper311
     % sudo port install pgplot cfitsio gsl glib2 fftw-3 fftw-3-single
     ~~~
-- TEMPO should build easily with gfortran. I did not make any changes to the distro.
+- tempo2 (only needed for polycos) is available from conda-forge for osx-64; on osx-arm64 you currently need to build it from source.
 - Before you build, you will likely need to set the following environment variables. You probably do *not* need to have `DYLD_LIBRARY_PATH` set at runtime.
     ~~~
     # These are needed only at *BUILD* time

@@ -67,6 +67,9 @@ executable('bincand', 'bincand.c', 'bincand_cmd.c',
 executable('check_bary_erfa', 'check_bary_erfa.c',
     dependencies: [fftw, gsl, libm], include_directories: inc, link_with: libpresto, install: false)
 
+executable('check_polycos_t2', 'check_polycos_t2.c', 'polycos.c',
+    dependencies: [glib, fftw, gsl, libm], include_directories: inc, link_with: libpresto, install: false)
+
 executable('check_parkes_raw', 'check_parkes_raw.c', 'multibeam.c',
     dependencies: [fftw, gsl, libm], include_directories: inc, link_with: libpresto, install: true)
 
