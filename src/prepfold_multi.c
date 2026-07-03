@@ -352,7 +352,7 @@ int main(int argc, char *argv[])
     int *maskchans = NULL;
     long worklen = 0, reads_per_part = 0, blockfloats;
     long long lorec = 0, numrec = 0, totnumfolded = 0, totnumblocks = 0;
-    long ii, jj, numread = 0;
+    long ii, jj, cur_numread = 0, next_numread = 0;
     int c;
     double tepoch, shared_dt;
     struct spectra_info s;
@@ -369,7 +369,11 @@ int main(int argc, char *argv[])
     int shared_numbarypts = 0;
     double *shared_barytimes = NULL, *shared_topotimes = NULL, shared_avgvoverc = 0.0;
     rawblock_reader *reader = NULL;
-    float **subdatas = NULL, *insub_data = NULL;
+    float **subdatas = NULL;
+    /* Two insub read buffers so the next block can be read into the free one */
+    /* while the current one is being folded; insub_cur names the fold buffer. */
+    float *insub_bufs[2] = { NULL, NULL };
+    int insub_cur = 0;
     int padding = 0, nummasked = 0;
     int nthreads = 1;
     size_t fold_mem_bytes = 0, fold_mem_warn = 0, fold_mem_cap = 0;
@@ -656,26 +660,42 @@ int main(int argc, char *argv[])
         reader = rawblock_reader_init(&s, &obsmask);
         /* Seed the masking start time for startT != 0 (no-op when lorec == 0). */
         reader->currentspectra = lorec * (long long) ptsperrec;
-        /* Prime the reader (fills the "last" slot; produces no foldable data). */
+        /* Prime the ring: read block 0 into "last" and block 1 into "current"   */
+        /* (each read targets the prefetch slot, then a ring rotate promotes it), */
+        /* so the first fold has both the block to fold and the block it wraps    */
+        /* back into.  block 0 is cleaned at the seed (firsttime, no advance) and */
+        /* block 1 shares that seed, matching read_subbands()'s priming exactly.  */
         (void) read_clean_rawblock(reader, &s, maskchans, &nummasked, &obsmask,
                                    &padding);
+        rawblock_reader_advance(reader);
+        cur_numread = read_clean_rawblock(reader, &s, maskchans, &nummasked,
+                                          &obsmask, &padding);
+        rawblock_reader_advance(reader);
     } else {                    /* insubs */
-        insub_data = gen_fvect(blockfloats);
+        insub_bufs[0] = gen_fvect(blockfloats);
+        insub_bufs[1] = gen_fvect(blockfloats);
         for (ii = 0; ii < s.num_files; ii++)
             chkfileseek(s.files[ii], lorec * SUBSBLOCKLEN, sizeof(short), SEEK_SET);
+        /* Prime the fold buffer with the first block; read-ahead fills the other. */
+        cur_numread = read_PRESTO_subbands(s.files, s.num_files, insub_bufs[0],
+                                           recdt, maskchans, &nummasked, &obsmask,
+                                           s.padvals);
     }
 
     printf("Folding...\n");
     printf("  Folded %lld points of %.0f", totnumfolded, N);
-    /* One persistent parallel region spans the whole block loop, instead of  */
-    /* entering a fresh team per block (Stage 6 #2).  Each worker runs the     */
-    /* part/block loops privately and meets at the work-sharing constructs:    */
-    /* the serial read/clean and reader-advance run in `omp single` and the    */
-    /* per-candidate dedisperse+fold in `omp for`.  The implicit barriers keep */
-    /* the exact serial-read -> fold-all -> advance ordering (so dedisp still  */
-    /* sees the intact current/last pair and the advance/swap still happens    */
-    /* only after every candidate has consumed it), which keeps per-candidate  */
-    /* output bit-identical to the per-block-team version.                     */
+    /* One persistent parallel region spans the whole block loop, and the read  */
+    /* of the NEXT block overlaps the fold of the current one (Stage 6 #1).      */
+    /* Each iteration one thread reads block m+1 ahead (into the free ring slot  */
+    /* for RAWDATA, or the idle insub buffer) in an `omp single nowait`, while   */
+    /* the rest fold block m's candidates in an `omp for`.  The read touches     */
+    /* only the prefetch slot -- never the current/last pair the folds read --   */
+    /* so the two proceed on disjoint memory.  The read thread joins the `for`   */
+    /* when it finishes, and the `for`'s end barrier then guarantees BOTH the    */
+    /* fold and the read-ahead are complete before the ring rotates.  Dynamic    */
+    /* scheduling keeps the (late-arriving) read thread from holding a reserved  */
+    /* chunk of fold work.  Block read order and per-block cleaning are          */
+    /* unchanged, so per-candidate output stays bit-identical.                   */
 #ifdef _OPENMP
 #pragma omp parallel default(shared) private(ii, jj)
 #endif
@@ -683,36 +703,41 @@ int main(int argc, char *argv[])
         for (ii = 0; ii < fcs.npart; ii++) {
             for (jj = 0; jj < reads_per_part; jj++) {
                 double fold_time0 = ii * reads_per_part * proftime + jj * proftime;
+                long m = ii * reads_per_part + jj;
+                int do_prefetch =
+                    (m + 1 < (long) fcs.npart * reads_per_part);
 
-                /* Serial read + clean of this block (one thread); the implicit */
-                /* barrier at the end of `single` publishes numread and the     */
-                /* cleaned block to every worker before any fold begins.        */
+                /* Read block m+1 ahead on one thread, overlapping the folds of  */
+                /* block m below.  `nowait` lets the other threads start folding  */
+                /* immediately; the read target never aliases the fold data.      */
 #ifdef _OPENMP
-#pragma omp single
+#pragma omp single nowait
 #endif
                 {
-                    if (RAWDATA)
-                        numread = read_clean_rawblock(reader, &s, maskchans,
-                                                      &nummasked, &obsmask,
-                                                      &padding);
-                    else        /* insubs: subbands already dedispersed at the */
+                    if (do_prefetch) {
+                        if (RAWDATA)
+                            next_numread =
+                                read_clean_rawblock(reader, &s, maskchans,
+                                                    &nummasked, &obsmask, &padding);
+                        else    /* insubs: subbands already dedispersed at the */
                                 /* nominal DM; the candidate DM enters at the   */
                                 /* optimize stage (correct_subbands_for_DM).    */
-                        numread = read_PRESTO_subbands(s.files, s.num_files,
-                                                       insub_data, recdt, maskchans,
-                                                       &nummasked, &obsmask,
-                                                       s.padvals);
+                            next_numread =
+                                read_PRESTO_subbands(s.files, s.num_files,
+                                                     insub_bufs[insub_cur ^ 1],
+                                                     recdt, maskchans, &nummasked,
+                                                     &obsmask, s.padvals);
+                    }
                 }
 
-                /* Parallelize over candidates: the cleaned block (current/last) */
-                /* is read-only here, and each candidate writes only its own      */
+                /* Parallelize over candidates: the block being folded is        */
+                /* read-only here, and each candidate writes only its own         */
                 /* dedispersion scratch and rawfolds/buffers, so there is no      */
-                /* cross-candidate contention.  The reader advance/swap happens   */
-                /* AFTER this region (below), so no candidate reads last_clean    */
-                /* post-swap.                                                     */
+                /* cross-candidate contention.  The `for` end barrier joins the   */
+                /* read-ahead thread, so the ring rotate below is safe.           */
                 if (RAWDATA) {
 #ifdef _OPENMP
-#pragma omp for schedule(static)
+#pragma omp for schedule(dynamic)
 #endif
                     for (c = 0; c < ncand; c++) {
                         int tid = 0;
@@ -723,43 +748,50 @@ int main(int argc, char *argv[])
                         dedisp_subbands(reader->current_clean, reader->last_clean,
                                         worklen, numchan, fc[c].idispdts, fc[c].nsub,
                                         sub_c);
-                        fold_subband_block(cmd, &fc[c], sub_c, worklen, numread, ii,
-                                           fold_time0, fc[c].foldf, fc[c].foldfd,
+                        fold_subband_block(cmd, &fc[c], sub_c, worklen, cur_numread,
+                                           ii, fold_time0, fc[c].foldf, fc[c].foldfd,
                                            fc[c].foldfdd, buffers[c], phasesadded[c]);
                     }
                 } else {
+                    float *foldbuf = insub_bufs[insub_cur];
 #ifdef _OPENMP
-#pragma omp for schedule(static)
+#pragma omp for schedule(dynamic)
 #endif
                     for (c = 0; c < ncand; c++) {
                         int tid = 0;
-                        float *src = insub_data;
+                        float *src = foldbuf;
 #ifdef _OPENMP
                         tid = omp_get_thread_num();
 #endif
                         if (cmd->runavgP) { /* runavg mutates data: fold a copy */
                             src = subdatas[tid];
-                            memcpy(src, insub_data,
+                            memcpy(src, foldbuf,
                                    (size_t) blockfloats * sizeof(float));
                         }
-                        fold_subband_block(cmd, &fc[c], src, worklen, numread, ii,
-                                           fold_time0, fc[c].foldf, fc[c].foldfd,
+                        fold_subband_block(cmd, &fc[c], src, worklen, cur_numread,
+                                           ii, fold_time0, fc[c].foldf, fc[c].foldfd,
                                            fc[c].foldfdd, buffers[c], phasesadded[c]);
                     }
                 }
 
-                /* Serial reader advance + counters (one thread).  The `for`    */
-                /* above ended with a barrier, so every candidate has consumed  */
-                /* the (current, last) pair before the swap; this `single`      */
-                /* barrier in turn orders the swap before the next block read.  */
+                /* Serial rotate + counters (one thread).  The `for` above ended */
+                /* with a barrier, so every candidate has consumed the current    */
+                /* block AND the read-ahead has finished writing the prefetch      */
+                /* slot; rotating the ring (or toggling the insub buffer) here is   */
+                /* therefore safe, and this `single`'s barrier orders it before     */
+                /* the next block's read/fold.  cur_numread advances to the block   */
+                /* just read ahead.                                                 */
 #ifdef _OPENMP
 #pragma omp single
 #endif
                 {
                     if (RAWDATA)
                         rawblock_reader_advance(reader);
-                    totnumfolded += numread;
+                    else
+                        insub_cur ^= 1;
+                    totnumfolded += cur_numread;
                     totnumblocks++;
+                    cur_numread = next_numread;
                 }
             }
 #ifdef _OPENMP
@@ -837,8 +869,10 @@ int main(int argc, char *argv[])
     for (ii = 0; ii < nthreads; ii++)
         vect_free(subdatas[ii]);
     free(subdatas);
-    if (insub_data)
-        vect_free(insub_data);
+    if (insub_bufs[0])
+        vect_free(insub_bufs[0]);
+    if (insub_bufs[1])
+        vect_free(insub_bufs[1]);
     if (!cmd->outfileP)
         free(rootnm);
     if (cmd->maskfileP) {

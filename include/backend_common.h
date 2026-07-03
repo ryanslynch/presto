@@ -115,10 +115,10 @@ int read_subbands(float *fdata, int *delays, int numsubbands, struct spectra_inf
 /* DM -- via dedisp_subbands().  The single-candidate path is unchanged.   */
 typedef struct rawblock_reader {
     float *frawdata;          /* 2*num_channels*spectra_per_subint raw read buffer */
-    float *rawdata1;          /* cleaned channel-major block A                      */
-    float *rawdata2;          /* cleaned channel-major block B                      */
-    float *current_clean;     /* newest cleaned block (rawdata1 or rawdata2)        */
-    float *last_clean;        /* previous cleaned block (supplies cross-block samples) */
+    float *slots[3];          /* three cleaned channel-major block buffers (ring)   */
+    float *current_clean;     /* block being folded now (one of slots[])            */
+    float *last_clean;        /* previous block (supplies cross-block samples)      */
+    float *prefetch_clean;    /* free slot the next (read-ahead) block reads into   */
     fftwf_plan tplan1;        /* transpose plan (spectra_per_subint x num_channels) */
     long long currentspectra; /* per-reader spectra count (for masking start time) */
     int firsttime;            /* 1 until the priming block has been read           */
