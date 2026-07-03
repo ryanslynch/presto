@@ -55,3 +55,108 @@ String -ignorechan ignorechanstr {Comma separated string (no spaces!) of channel
 
 Rest infile {Input data file name(s).} \
         -c 1 16384
+
+Description {rfifind examines a raw radio data file (SIGPROC filterbank or
+PSRFITS) for radio-frequency interference (RFI), producing a
+.I <basename>_rfifind.mask
+file that
+.BR prepdata (1),
+.BR prepsubband (1),
+.BR prepfold (1),
+and
+.BR mpiprepsubband (1)
+can all read (via their own
+.B -mask
+option) to exclude bad time intervals and/or frequency channels from
+subsequent processing.  It divides the observation into
+.B -time
+(or
+.BR -blocks )
+second (or spectra) chunks, computes time-domain and Fourier-domain
+statistics for each chunk of each channel, and flags outliers using the
+.B -timesig
+and
+.B -freqsig
+sigma cutoffs.  A whole time interval is masked if more than
+.B -chanfrac
+of its channels are bad; a whole channel is masked if more than
+.B -intfrac
+of its intervals are bad.
+.B -zapchan
+and
+.B -zapints
+let you force specific channels or intervals to always be masked,
+regardless of the statistics.
+.PP
+If the resulting mask isn't quite right -- too much or too little
+gets flagged --
+.B -nocompute
+re-derives the mask from the already-computed
+.I .stats
+file using a fresh set of
+.BR -timesig / -freqsig / -chanfrac / -intfrac / -zapchan / -zapints
+values, without re-scanning the raw data at all.  Give it the
+.I same
+.B -o
+root as the original run (so it finds that run's
+.I .stats
+and
+.I .rfi
+files) and
+.B -mask
+pointing at the previous mask file (so per-channel padding values
+carry over).  The raw input file name(s) must still be given on the
+command line even though
+.B -nocompute
+never reads them -- a wart that should eventually go away.
+.PP
+rfifind also writes a
+.I .stats
+file (raw per-chunk statistics, useful as input to
+.IR rfifind_stats.py )
+and, unless
+.BR -nocompute ,
+diagnostic postscript plots.  A separate but related mechanism is
+.BR -ignorechan ,
+which completely excludes given channels from
+.I all
+raw-data PRESTO tools (as if they were pure zeros) rather than masking
+them based on rfifind's statistics; see the PRESTO FAQ for guidance on
+when to prefer
+.B -ignorechan
+over an rfifind-mask-based
+.BR -zapchan .
+.PP
+Example: examine an observation in 30-second (default) chunks and
+write the resulting mask for later use with
+.BR prepsubband (1):
+.RS
+.nf
+rfifind -o mypulsar mypulsar.fits
+prepsubband -mask mypulsar_rfifind.mask -o mypulsar -dm 30 mypulsar.fits
+.fi
+.RE
+.PP
+Example: the above mask turned out to be far too aggressive -- the
+observation is full of periodic RFI and the default
+.B -freqsig
+threshold ended up masking most of the data.  Relax (raise)
+.B -freqsig
+to let more (slightly contaminated) data through, without
+re-scanning the raw data:
+.RS
+.nf
+rfifind -nocompute -o mypulsar -mask mypulsar_rfifind.mask -freqsig 6 mypulsar.fits
+.fi
+.RE
+.PP
+rfifind can be a serial bottleneck in a search pipeline and is
+sometimes quite time-consuming; unlike most of PRESTO it scales very
+well with
+.BR -ncpus ,
+so it's worth using several CPUs here even if you don't elsewhere.
+}
+
+Author {Scott Ransom <sransom@nrao.edu>}
+
+SeeAlso {prepdata(1), prepsubband(1), prepfold(1), mpiprepsubband(1)}

@@ -26,6 +26,33 @@ Flag	-sec	sec	{TOA unit is seconds (default is days)}
 Rest 		file 	{Input TOA file name} \
 			-c 1 1
 
+Description {toas2dat bins a list of event/photon arrival times (TOAs)
+into a regularly-sampled time series
+.RI ( .dat
+file, plus matching
+.IR .inf ),
+so that data that only exists as individual arrival times (e.g.
+gamma-ray or X-ray photon events) can be searched for periodicities
+with
+.BR realfft (1)
+and
+.BR accelsearch (1)
+just like any other PRESTO time series.
+.B -n
+and
+.B -dt
+set the number of output bins and the bin width (seconds);
+.B -t0
+sets the time of bin 0 (defaults to the first TOA).  Input TOAs are
+binary doubles by default, in days; use
+.B -text
+for ASCII input,
+.B -float
+for binary single-precision input, and
+.B -sec
+if the TOA unit is seconds rather than days.
+}
 
+Author {Scott Ransom <sransom@nrao.edu>}
 
-
+SeeAlso {realfft(1), accelsearch(1), prepdata(1)}

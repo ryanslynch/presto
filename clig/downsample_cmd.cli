@@ -19,4 +19,30 @@ String	-o	outfile {Name of the output time series file (with suffix)}
 Rest 		file 	{Input '.dat' or '.sdat' file name} \
 			-c 1 1
 
+Description {downsample co-adds every
+.B -factor
+neighboring samples of an already-dedispersed PRESTO time series
+.RI ( .dat
+or
+.IR .sdat ,
+as produced by
+.BR prepdata (1)
+or
+.BR prepsubband (1)),
+writing a new, shorter time series
+.RI ( <root>_D<factor>.dat / .sdat
+by default, or
+.B -o
+if given).  This is occasionally useful after the fact -- e.g. to
+further reduce the time resolution of an existing
+.I .dat
+file for a long-period search -- without having to re-run
+dedispersion from the raw data with a different
+.B -downsamp
+value.
+}
+
+Author {Scott Ransom <sransom@nrao.edu>}
+
+SeeAlso {prepdata(1), prepsubband(1), realfft(1)}
 

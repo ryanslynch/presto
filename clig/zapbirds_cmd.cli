@@ -27,6 +27,65 @@ Double  -baryv      baryv \
 Rest infile {Input file name (no suffix) of floating point fft data.  A '.inf' file of the same name must also exist} \
         -c 1 16384
 
+Description {zapbirds removes known periodic interference ("birdies" --
+power mains harmonics, known pulsars, oscillator artifacts, etc.)
+directly from a
+.BR realfft (1)
+.I .fft
+file, in-place, before running
+.BR accelsearch (1)
+or other Fourier-domain searches.
+.PP
+Most users are better served by
+.I simple_zapbirds.py
+instead of calling zapbirds directly.  It takes a
+.I .birds
+file (freq/width/#harmonics/grow/bary columns, one birdie per line)
+and one or more
+.I .fft
+files, and does everything zapbirds' automatic mode below does but
+more conveniently: there's no need to manually pre-convert the
+.I .birds
+file into a zapfile with
+.IR makezaplist.py ,
+it automatically computes each observation's barycentric velocity
+(so
+.B -baryv
+below doesn't need to be worked out by hand), and it can zap many
+.I .fft
+files in a single call.
+.PP
+zapbirds itself has two modes, selected by which options are given:
+.PP
+Automatic mode
+.RB ( -zap
+plus
+.BR -zapfile )
+reads a "zapfile" of frequency/width pairs (one per line, in Hz) --
+typically a standard birdie list built up over time for a given
+instrument/site -- and zeroes each corresponding range of Fourier
+bins in the
+.I .fft
+file directly.
+.B -baryv
+should be given if the data (and hence the FFT) were barycentered, so
+that birdie frequencies known in the topocentric (observatory) frame
+are shifted correctly before zapping.
+.PP
+Interactive mode
+.RB ( -in
+plus
+.BR -out )
+reads a list of candidate frequencies and harmonic counts, lets you
+visually inspect and select which harmonics to zap in a plot of the
+power spectrum, and writes the frequencies/widths actually zapped out
+to
+.BR -out ,
+suitable for reuse as a
+.B -zapfile
+in automatic mode on other data from the same instrument.
+}
 
+Author {Scott Ransom <sransom@nrao.edu>}
 
-
+SeeAlso {realfft(1), accelsearch(1), rednoise(1)}

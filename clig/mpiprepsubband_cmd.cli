@@ -53,3 +53,43 @@ String -ignorechan ignorechanstr {Comma separated string (no spaces!) of channel
 
 Rest infile {Input data file name.  If the data is not in a known raw format, it should be a single channel of single-precision floating point data.  In this case a '.inf' file with the same root filename must also exist (Note that this means that the input data file must have a suffix that starts with a period)} \
         -c 1 16384
+
+Description {mpiprepsubband is the MPI-parallel counterpart of
+.BR prepsubband (1):
+it dedisperses a raw radio data file (SIGPROC filterbank or PSRFITS)
+into many trial-DM time series, but spreads the work across many MPI
+processes -- potentially on many different machines -- to get around
+the I/O bottleneck of writing hundreds or thousands of output
+.I .dat
+files from a single node.  One MPI rank reads the raw data and
+distributes it over the network; the remaining ranks each dedisperse
+and write their own share of the DM trials.  The DM trials are the
+same
+.BR -lodm / -dmstep / -numdms
+set as
+.BR prepsubband (1),
+and the total number of DMs must be evenly divisible by the number of
+dedispersing ranks.
+.I DDplan.py
+understands this constraint and will produce a compatible plan if
+given
+.BR "-p numprocs" .
+There is little benefit to running mpiprepsubband with multiple ranks
+on a single machine -- its advantage comes specifically from
+distributing output I/O across separate machines/nodes.
+.PP
+Run under
+.B mpirun
+(or your MPI launcher of choice) with one rank for the reader plus N
+ranks for dedispersing:
+.RS
+.nf
+mpirun -np 5 mpiprepsubband -lodm 0 -dmstep 1 -numdms 100 -o mypulsar mypulsar.fits
+.fi
+.RE
+(4 dedispersing ranks here, so -numdms must be a multiple of 4.)
+}
+
+Author {Scott Ransom <sransom@nrao.edu>}
+
+SeeAlso {prepsubband(1), prepdata(1), rfifind(1), accelsearch(1)}

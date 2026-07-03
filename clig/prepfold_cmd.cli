@@ -133,3 +133,115 @@ Double -offset offset {A time offset to add to the 1st event in the same units a
 
 Rest infile {Input data file name.  If the data is not in a regognized raw data format, it should be a file containing a time series of single-precision floats or short ints.  In this case a '.inf' file with the same root filename must also exist (Note that this means that the input data file must have a suffix that starts with a period)} \
         -c 1 16384
+
+Description {prepfold folds one pulsar candidate -- raw radio data
+(SIGPROC filterbank or PSRFITS), an already-dedispersed time series,
+or an event/photon list -- and, unless told not to
+.RB ( -nosearch
+and friends), refines the fold by searching a small volume around the
+input period/frequency, its derivative(s), and (for raw data) DM,
+writing a
+.I .pfd
+file plus a postscript summary plot.  For folding many candidates in
+one pass over the raw data (e.g. a batch of
+.BR accelsearch (1)
+candidates), see
+.BR prepfold_multi (1)
+instead.
+.PP
+The folding parameters can come from several sources: explicit
+.BR -p / -pd / -pdd
+or
+.BR -f / -fd / -fdd ;
+.B -accelcand
+plus
+.B -accelfile
+to fold a specific candidate straight out of an
+.BR accelsearch (1)
+.I .cand
+file (use
+.B -pfact
+or
+.B -ffact
+if the candidate looks like a harmonic); a
+.BR -par
+file or
+.B -psr
+name looked up against the ATNF pulsar database; or
+.BR -timing ,
+which folds with TEMPO2-generated polycos (no searching), sets the DM
+and profile-bin count automatically, and produces a
+.I .pfd
+suitable for TOA generation with
+.IR get_TOAs.py .
+.PP
+.B -fine
+narrows the searched p/pd/pdd/DM volume (good for a well-constrained,
+faint candidate);
+.B -coarse
+widens it (good when the ephemeris is uncertain);
+.B -slow
+combines
+.B -fine
+with more profile bins for long-period pulsars.
+For raw data,
+.B -nsub
+(typically 64-128) sets the frequency resolution used for the DM
+search and RFI rejection, and
+.B -mask
+/
+.B -ignorechan
+apply an
+.BR rfifind (1)
+mask or explicit channel list.  If interference inflates the
+off-pulse chi^2 after the fact, see
+.BR show_pfd (1)
+.BR -fixchi .
+.PP
+Example: a quick look at an
+.BR accelsearch (1)
+candidate straight from the barycentered time series it was found
+in, to see if it looks pulsar-like before investing in a full raw-data
+fold:
+.RS
+.nf
+prepfold -accelcand 2 -accelfile mypulsar_DM238.30_ACCEL_20.cand mypulsar_DM238.30.dat
+.fi
+.RE
+.PP
+Example: the same candidate, but folded from the raw data with a
+range of trial DMs around its search DM, using
+.B -dm
+and
+.B -nsub
+64 subbands -- much slower, but shows whether there's a genuine
+signal-to-noise peak in DM (a good sign it's a real pulsar rather
+than RFI or a DM=0 artifact):
+.RS
+.nf
+prepfold -dm 238.30 -nsub 64 -accelcand 2 -accelfile mypulsar_DM238.30_ACCEL_20.cand mypulsar.fits
+.fi
+.RE
+.PP
+Example: fold raw data at an already-known period and period
+derivative and DM, applying an
+.BR rfifind (1)
+mask:
+.RS
+.nf
+prepfold -p 8.66430621957513e-3 -pd -5.01154755640048e-11 -dm 238.30 -mask mypulsar_rfifind.mask mypulsar.fits
+.fi
+.RE
+.PP
+Example: a timing-quality fold of raw data using a par file, with 64
+subbands and a few known-bad channels excluded outright:
+.RS
+.nf
+prepfold -timing mypulsar.par -nsub 64 -ignorechan 0:3 mypulsar.fits
+.fi
+.RE
+}
+
+Author {Scott Ransom <sransom@nrao.edu>}
+
+SeeAlso {prepfold_multi(1), show_pfd(1), accelsearch(1), rfifind(1), prepdata(1), prepsubband(1)}

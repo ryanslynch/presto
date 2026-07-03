@@ -76,9 +76,6 @@ executable('check_parkes_raw', 'check_parkes_raw.c', 'multibeam.c',
 executable('dat2sdat', 'dat2sdat.c',
     dependencies: [fftw, gsl, libm], include_directories: inc, link_with: libpresto, install: true)
 
-executable('dftfold', 'dftfold_cmd.c', 'dftfold.c',
-    dependencies: [fftw, gsl, libm], include_directories: inc, link_with: libpresto, install: true)
-
 executable('downsample', 'downsample.c', 'downsample_cmd.c', 
     dependencies: [fftw, gsl, libm], include_directories: inc, link_with: libpresto, install: true)
 

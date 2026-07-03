@@ -14,7 +14,6 @@ bin/bincand
 bin/cal2mjd
 bin/check_parkes_raw
 bin/dat2sdat
-bin/dftfold
 bin/downsample
 bin/dump_spigot_zerolag
 bin/exploredat

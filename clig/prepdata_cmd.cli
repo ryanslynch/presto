@@ -46,3 +46,60 @@ String -ignorechan ignorechanstr {Comma separated string (no spaces!) of channel
 
 Rest infile {Input data file name.  If the data is not in a known raw format, it should be a single channel of single-precision floating point data.  In this case a '.inf' file with the same root filename must also exist (Note that this means that the input data file must have a suffix that starts with a period)} \
         -c 1 16384
+
+Description {prepdata converts a single raw radio data file (SIGPROC
+filterbank or PSRFITS) into a single dedispersed time series -- a
+.I .dat
+file of single-precision floats (or, with
+.BR -shorts ,
+16-bit ints) plus a matching
+.I .inf
+metadata file -- suitable for
+.BR realfft (1)
+and other single-DM PRESTO tools.  For dedispersing many trial DMs at
+once, see
+.BR prepsubband (1)
+or
+.BR mpiprepsubband (1)
+instead; prepdata is normally used either for a single already-known
+DM, or as a quick way to inspect one trial without the overhead of a
+full DM search.
+.PP
+The dispersion measure to remove is given by
+.BR -dm .
+Unless
+.BR -nobary ,
+the output series is also barycentered (in-process, via ERFA -- see
+the observatory database in the raw file's header).  An
+.BR rfifind (1)
+.I .mask
+file may be applied with
+.B -mask
+to exclude bad channels/intervals, and
+.B -ignorechan
+excludes specific channels outright.
+.B -downsamp
+co-adds neighboring time samples (must evenly divide the data's
+spectra-per-subint -- see
+.BR readfile (1)
+to check); use
+.B -start
+and
+.B -offset
+to begin processing partway into the observation, and
+.B -numout
+to pad or truncate the output to an exact number of samples (useful
+when several DM trials from different tools need matching lengths).
+.PP
+Example: dedisperse a PSRFITS file at DM 44.3, applying an rfifind
+mask:
+.RS
+.nf
+prepdata -dm 44.3 -mask mypulsar_rfifind.mask -o mypulsar_DM44.30 mypulsar.fits
+.fi
+.RE
+}
+
+Author {Scott Ransom <sransom@nrao.edu>}
+
+SeeAlso {prepsubband(1), mpiprepsubband(1), rfifind(1), realfft(1), readfile(1)}

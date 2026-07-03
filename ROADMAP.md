@@ -175,6 +175,12 @@ PRESTO routines (`rfifind`, `[mpi]prep*`, `accelsearch`, `realfft`, and `show_pf
 re-generate all the CLIG-based files (except prepfold_multi, given the issues!). On a related note,
 the relevant information in `prepfold_multi.1` should also go in a new section in the `FAQ.md`.
 
+**[DONE]** Description/Author/SeeAlso added to all 15 remaining `.cli` files (usage examples
+included for `rfifind`, `prepdata`, `prepsubband`, `mpiprepsubband`, `accelsearch`, `realfft`,
+and `show_pfd`); all regenerated via pyclig except `prepfold_multi_cmd.cli`, which keeps its
+existing hand-written content. `prepfold_multi`'s `-candfile` format is now also copied into a
+new FAQ.md entry. Man page installation (next section) is still open.
+
 ### As an extension to the previous, figure out man page installation
 
 Discuss with Claude ways to do this seamlessly and usefully, especially once we (soon!) 
@@ -187,6 +193,9 @@ can safely be removed. These should be things that have not been significantly t
 a long while, are irrelevant because of other code, or are not used at all (like `showmulti`.
 I don't even remember what that is!). I would like to approve a list item by item for those
 things to be removed.
+
+**[DONE]** `dftfold` (outdated, unused, no references elsewhere in the tree) was removed
+while doing the `.cli` Description/Author/SeeAlso pass below.
 
 ### Replace code of questionable origin or which can be replaced with GSL or ERFA (or scipy)
 

@@ -1459,7 +1459,7 @@ void usage(void)
     fputs("                  default: `0'\n", stderr);
     fputs("          infile: Input data file name.  If the data is not in a regognized raw data format, it should be a file containing a time series of single-precision floats or short ints.  In this case a '.inf' file with the same root filename must also exist (Note that this means that the input data file must have a suffix that starts with a period)\n", stderr);
     fputs("                  1...16384 values\n", stderr);
-    fputs("  CLI code generated: 01Jul26\n", stderr);
+    fputs("  CLI code generated: 03Jul26\n", stderr);
     fputs("  ", stderr);
     exit(EXIT_FAILURE);
 }

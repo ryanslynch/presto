@@ -60,3 +60,78 @@ String -ignorechan ignorechanstr {Comma separated string (no spaces!) of channel
 
 Rest infile {Input data file name.  If the data is not in a known raw format, it should be a single channel of single-precision floating point data.  In this case a '.inf' file with the same root filename must also exist (Note that this means that the input data file must have a suffix that starts with a period)} \
         -c 1 16384
+
+Description {prepsubband converts a raw radio data file (SIGPROC filterbank
+or PSRFITS) into many dedispersed time series in a single pass over
+the data -- one
+.I .dat
+/
+.I .inf
+pair per trial DM -- which is far more efficient than calling
+.BR prepdata (1)
+once per DM.  The DM trials are
+.B -numdms
+values starting at
+.B -lodm
+and stepping by
+.BR -dmstep ;
+.I DDplan.py
+computes sensible values for these (and for
+.BR -nsub / -downsamp )
+given an observation's frequency setup and desired DM range/tolerance.
+Unless
+.BR -nobary ,
+each output series is barycentered (in-process, via ERFA).
+.PP
+prepsubband always dedisperses internally in two steps, whether or not
+.B -sub
+is given: it first collapses the raw channels into
+.B -nsub
+coarser sub-band time series (partially dedispersed), then finishes
+dedispersing each subband to every final trial DM -- much cheaper
+than fully dedispersing directly from raw channels for each of
+.B -numdms
+trials.  Normally those intermediate subbands are discarded once the
+run finishes.
+.B -sub
+together with
+.B -subdm
+instead makes them persistent: prepsubband writes just the collapsed
+subbands (partially dedispersed to
+.BR -subdm )
+as
+.I *.sub<NN>
+files, without producing final dedispersed time series in that same
+run.  Because those subbands are much smaller than the raw data and
+already have most of the dispersion removed, they can later be reused
+directly -- by re-running prepsubband (or
+.BR mpiprepsubband (1))
+on the
+.I .subNN
+files to dedisperse a fresh set of trial DMs, or by folding them
+directly with
+.BR prepfold (1)
+or
+.BR prepfold_multi (1)
+-- to search or fold candidates at DMs near
+.B -subdm
+much faster than starting over from the raw data.
+.B -mask
+applies an
+.BR rfifind (1)
+mask, and
+.B -ignorechan
+excludes specific channels outright.
+.PP
+Example: dedisperse 20 trial DMs from DM 10 in steps of 1, applying an
+rfifind mask:
+.RS
+.nf
+prepsubband -mask mypulsar_rfifind.mask -lodm 10 -dmstep 1 -numdms 20 -o mypulsar mypulsar.fits
+.fi
+.RE
+}
+
+Author {Scott Ransom <sransom@nrao.edu>}
+
+SeeAlso {prepdata(1), mpiprepsubband(1), rfifind(1), accelsearch(1), prepfold(1), prepfold_multi(1)}

@@ -46,6 +46,37 @@ Flag -mak  makefile  {Determine optimization parameters from 'infile.mak'}
 Rest infile {Input fft file name (without a suffix) of floating point fft data.  A '.inf' file of the same name must also exist} \
         -c 1 1
 
+Description {bincand refines a
+.BR search_bin (1)
+phase-modulation binary candidate into a phase-coherent orbital
+model.  Given a candidate (via
+.B -candfile
+plus
+.BR -candnum ,
+or explicit orbital parameters via
+.BR -usr / -pb / -x / -e / -To / -w / -wdot ),
+it generates a grid of fake orbits spanning a range of trial pulsar
+periods
+.RB ( -plo
+to
+.BR -phi )
+and Fourier frequencies
+.RB ( -rlo
+to
+.BR -rhi ),
+computes each trial orbit's Fourier modulation spectrum, and
+cross-correlates it against the candidate's observed spectrum to find
+the best-fitting orbit.  Like
+.BR search_bin (1),
+this is a specialized technique for compact/short-period binaries
+(see Ransom, Cordes, & Eikenberry 2003) that is rarely needed for
+ordinary PRESTO searches, where
+.BR accelsearch (1)
+candidates are folded directly with
+.BR prepfold (1)
+instead.
+}
 
+Author {Scott Ransom <sransom@nrao.edu>}
 
-
+SeeAlso {search_bin(1), accelsearch(1), prepfold(1)}

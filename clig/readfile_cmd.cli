@@ -50,6 +50,43 @@ Double 	-nph		nph	{0th FFT bin amplitude (for 'RZW' data)} \
 Rest 			file 	{Input data file name.} \
 				-c  1 1
 
+Description {readfile reads a data file in one of PRESTO's many
+recognized formats and displays its contents (or, for raw
+observation formats, its header) on stdout.  It is a good first
+command to run on any unfamiliar file, and is also the fastest way to
+check things like a PSRFITS/filterbank header's frequency setup,
+number of channels, or "Spectra per subint" (needed to know which
+.B -downsamp
+factors are valid for
+.BR prepdata (1)
+or
+.BR prepsubband (1)).
+.PP
+The format is normally guessed from the filename's suffix (e.g.
+.IR .dat ,
+.IR .fft ,
+.IR .fits/.sf ,
+.IR .fil/.fb ,
+a numeric PSRFITS-search-mode suffix, PRESTO
+.I .cand
+files, etc.); the explicit format flags
+.RB ( -psrfits ,
+.BR -filterbank ,
+and, for old data from retired backends still occasionally
+encountered,
+.BR -pkmb / -bcpm / -wapp / -spigot )
+override the guess when a file has been renamed or has no suffix.
+For raw single-precision data types
+.RB ( -float ,
+.BR -double ,
+.BR -short ,
+etc.) readfile just dumps the requested range of values (see
+.BR -index );
+.B -page
+paginates the output like
+.BR more (1).
+}
 
+Author {Scott Ransom <sransom@nrao.edu>}
 
-
+SeeAlso {prepdata(1), prepsubband(1), prepfold(1)}

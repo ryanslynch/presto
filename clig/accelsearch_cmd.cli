@@ -47,3 +47,96 @@ Flag   -noharmremove noharmremove  {Do not remove harmonically related candidate
 
 Rest infile {Input file name(s) of the floating point .fft or .[s]dat file(s).  '.inf' file(s) of the same name must also exist} \
         -c 1 16384
+
+Description {accelsearch searches a Fourier power spectrum
+.RB ( .fft ,
+normally produced by
+.BR realfft (1))
+or a short time series
+.RB ( .dat / .sdat )
+for pulsar signals, using a Fourier-domain acceleration search with
+harmonic summing.  At each candidate frequency it searches a range of
+constant Fourier-frequency derivatives
+.RB ( -zmax ,
+approximating a constant acceleration during the observation) and,
+optionally, constant second derivatives
+.RB ( -wmax ,
+approximating a constant jerk), summing
+.B -numharm
+harmonics (a power of two, up to 32) at each trial to improve
+sensitivity to narrow pulsar signals.  Larger
+.B -zmax
+and
+.B -wmax
+searches find more strongly accelerated or jerking binaries (e.g.
+pulsars with massive companions) at the cost of a much larger search
+volume and run time; the PRESTO FAQ has guidance on reasonable ranges
+for various companion masses and orbital periods.
+.PP
+The Fourier-domain acceleration search technique implemented here is
+described in Ransom, Eikenberry, & Middleditch (2002),
+https://ui.adsabs.harvard.edu/abs/2002AJ....124.1788R/abstract, and
+the jerk-search extension
+.RB ( -wmax )
+is described in Andersen & Ransom (2018),
+https://ui.adsabs.harvard.edu/abs/2018ApJ...863L..13A/abstract.  If
+accelsearch contributes to a publication, please cite the relevant
+paper(s) (see also CITATION.cff in the PRESTO repository).
+.PP
+Candidates above
+.B -sigma
+(the equivalent Gaussian significance, corrected for the number of
+independent frequencies and derivatives searched in this run) are
+written to a
+.I .cand
+text summary and a binary
+.I _ACCEL_<zmax>
+(or
+.I _ACCEL_<zmax>_JERK_<wmax>
+when
+.B -wmax
+is used) candidate file for later sifting (e.g. with
+.IR ACCEL_sift.py )
+and folding with
+.BR prepfold (1).
+.B -inmem
+computes the full f/fdot plane in memory instead of incrementally,
+which is much faster but only practical for short time series.  When
+searching a
+.I .dat/.sdat
+time series directly (rather than a pre-computed
+.IR .fft ),
+.B -zaplist
+removes known interference frequencies from the internally-computed
+FFT before the search runs, without a separate
+.BR zapbirds (1)
+pass; in that case (and only in that case)
+.B -baryv
+should be given if the time series was barycentered, so that the
+zapped birdie frequencies (known in the topocentric frame) are
+shifted correctly before zapping.
+.PP
+.B -ncpus
+sets the number of OpenMP threads used to parallelize the search.
+accelsearch is one of the few PRESTO routines where multiple CPUs
+give a substantial speedup (the others being
+.BR rfifind (1)
+and
+.BR prepfold_multi (1));
+most of the rest of PRESTO is effectively single-threaded, with
+parallelism instead coming from running independent searches (e.g.
+different DM trials) concurrently.
+.PP
+Example: a zmax=200 acceleration search of a barycentered time series'
+FFT, summing up to 8 harmonics:
+.RS
+.nf
+realfft mypulsar_DM10.00.dat
+accelsearch -zmax 200 -numharm 8 mypulsar_DM10.00.fft
+.fi
+.RE
+}
+
+Author {Scott Ransom <sransom@nrao.edu>}
+
+SeeAlso {prepdata(1), prepsubband(1), realfft(1), zapbirds(1), prepfold(1), rfifind(1), prepfold_multi(1)}

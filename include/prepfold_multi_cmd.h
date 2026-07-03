@@ -57,7 +57,7 @@ typedef struct s_Cmdline {
   int absphaseP;
   /***** -barypolycos: Force the use of polycos for barycentered events */
   int barypolycosP;
-  /***** -debug: Show debugging output when calling TEMPO for polycos */
+  /***** -debug: Show debugging output when calling tempo2 for polycos */
   int debugP;
   /***** -samples: Treat the data as samples and not as finite-duration integrated data */
   int samplesP;

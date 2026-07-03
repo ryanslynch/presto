@@ -153,7 +153,7 @@ PLOT2DOBJS = powerplot.o xyline.o
 
 BINARIES = makedata makeinf mjd2cal realfft quicklook\
 	search_bin swap_endian prepdata\
-	check_parkes_raw bary shiftdata dftfold\
+	check_parkes_raw bary shiftdata\
 	patchdata readfile toas2dat taperaw\
 	accelsearch prepsubband cal2mjd split_parkes_beams\
 	dat2sdat sdat2dat downsample rednoise un_sc_td bincand\
@@ -208,9 +208,6 @@ bary: bary.o libpresto
 
 bincand: bincand_cmd.c bincand_cmd.o bincand.o libpresto
 	$(CC) $(CLINKFLAGS) -o $(PRESTO)/bin/$@ bincand.o bincand_cmd.o $(PRESTOLINK) -lm
-
-dftfold: dftfold_cmd.c dftfold_cmd.o dftfold.o libpresto
-	$(CC) $(CLINKFLAGS) -o $(PRESTO)/bin/$@ dftfold.o dftfold_cmd.o $(PRESTOLINK) -lm
 
 shiftdata: shiftdata.o
 	$(CC) $(CLINKFLAGS) -o $(PRESTO)/bin/$@ shiftdata.o -lm

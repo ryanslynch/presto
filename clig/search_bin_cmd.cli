@@ -42,6 +42,56 @@ Flag -noalias noalias {Do not add aliased powers to the harmonic sum.  (Faster b
 Rest infile {Input file name (no suffix) of floating point fft data.  A '.inf' file of the same name must also exist} \
         -c 1 1
 
+Description {search_bin searches a
+.BR realfft (1)
+.I .fft
+file for binary pulsars using a phase-modulation ("sideband") search,
+as described in Ransom, Cordes, & Eikenberry (2003).  Where
+.BR accelsearch (1)
+approximates the orbital Doppler drift as constant acceleration (or
+constant jerk) over the observation, search_bin instead looks
+directly for the sideband structure that orbital phase modulation
+imprints around a pulsar's spin frequency, which makes it more
+suitable for very short/compact orbits where the constant-acceleration
+approximation breaks down.  It works by computing many "mini-FFTs"
+(power-of-two lengths between
+.B -minfft
+and
+.BR -maxfft ,
+overlapping by
+.BR -overlap )
+of harmonically-summed
+.RB ( -harmsum )
+power around each candidate frequency in the
+.B -rlo
+to
+.B -rhi
+(or
+.B -flo
+to
+.BR -fhi )
+range, and reports the strongest
+.B -ncand
+candidates.  Candidates found this way can be refined into a
+phase-coherent orbital model with
+.BR bincand (1).
+This is a specialized, infrequently-used technique -- most binary
+searches with PRESTO use
+.BR accelsearch (1)
+instead.
+.PP
+The phase-modulation search technique implemented here is described in
+Ransom, Cordes, & Eikenberry (2003),
+https://ui.adsabs.harvard.edu/abs/2003ApJ...589..911R/abstract.  If
+search_bin contributes to a publication, please cite that paper (see
+also CITATION.cff in the PRESTO repository).
+.PP
+As of this writing, search_bin has not (yet!) led to the discovery of
+a new pulsar.  I would
+.I love
+to see that change -- if you find one with it, please let me know!
+}
 
+Author {Scott Ransom <sransom@nrao.edu>}
 
-
+SeeAlso {bincand(1), accelsearch(1), realfft(1)}
