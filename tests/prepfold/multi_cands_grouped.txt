@@ -1,0 +1,5 @@
+# name      DM      p                    pd
+# Two candidates that share a DM (238.30): they land in one DM group and
+# dedisperse once, folding both off the shared subband block (Stage 6 #4).
+grpA        238.30  8.66430621957513e-3  -5.01154755640048e-11
+grpB        238.30  8.50000000000000e-3   0.0

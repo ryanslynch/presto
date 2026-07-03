@@ -370,6 +370,11 @@ int main(int argc, char *argv[])
     double *shared_barytimes = NULL, *shared_topotimes = NULL, shared_avgvoverc = 0.0;
     rawblock_reader *reader = NULL;
     float **subdatas = NULL;
+    /* DM grouping (raw path): candidates that share an identical dispersion    */
+    /* delay table dedisperse to the same subband block, so dedisp_subbands runs */
+    /* once per group and every member folds off that one shared block.          */
+    int ngroups = 0, g = 0;
+    int *group_start = NULL, *group_size = NULL, *group_member = NULL;
     /* Two insub read buffers so the next block can be read into the free one */
     /* while the current one is being folded; insub_cur names the fold buffer. */
     float *insub_bufs[2] = { NULL, NULL };
@@ -653,6 +658,53 @@ int main(int argc, char *argv[])
                fold_mem_bytes / (1024.0 * 1024.0), ncand, ncand == 1 ? "" : "s",
                nthreads);
 
+    /* Group raw-data candidates by dispersion delay table.  Two candidates that */
+    /* dedisperse with the same idispdts (and nsub) produce a bit-identical       */
+    /* subband block, so the block is computed once per group and reused by every */
+    /* member -- a pure win on candfiles with clustered DMs, and a no-op (one     */
+    /* group per candidate) when every DM is distinct.  Insubs never call         */
+    /* dedisp_subbands here, so grouping applies to the raw path only.            */
+    if (RAWDATA) {
+        int *gid = (int *) chkmalloc(ncand * sizeof(int), "DM group ids");
+        int *rep = (int *) chkmalloc(ncand * sizeof(int), "DM group reps");
+        int *fillpos;
+        group_start = (int *) chkmalloc(ncand * sizeof(int), "DM group starts");
+        group_size = (int *) chkmalloc(ncand * sizeof(int), "DM group sizes");
+        group_member = (int *) chkmalloc(ncand * sizeof(int), "DM group members");
+        for (c = 0; c < ncand; c++) {
+            for (g = 0; g < ngroups; g++)
+                if (fc[c].nsub == fc[rep[g]].nsub &&
+                    memcmp(fc[c].idispdts, fc[rep[g]].idispdts,
+                           numchan * sizeof(int)) == 0)
+                    break;
+            if (g == ngroups)
+                rep[ngroups++] = c;
+            gid[c] = g;
+        }
+        for (g = 0; g < ngroups; g++)
+            group_size[g] = 0;
+        for (c = 0; c < ncand; c++)
+            group_size[gid[c]]++;
+        for (g = 0, ii = 0; g < ngroups; g++) {
+            group_start[g] = (int) ii;
+            ii += group_size[g];
+        }
+        /* Fill members in ascending candidate order (stable within a group). */
+        fillpos = (int *) chkmalloc(ngroups * sizeof(int), "DM group fill");
+        for (g = 0; g < ngroups; g++)
+            fillpos[g] = group_start[g];
+        for (c = 0; c < ncand; c++)
+            group_member[fillpos[gid[c]]++] = c;
+        free(fillpos);
+        free(gid);
+        free(rep);
+        if (ngroups < ncand)
+            printf("Dedispersing to %d unique DM group%s across %d candidates "
+                   "(saves %d dedispersion%s per block).\n",
+                   ngroups, ngroups == 1 ? "" : "s", ncand,
+                   ncand - ngroups, (ncand - ngroups) == 1 ? "" : "s");
+    }
+
     if (RAWDATA) {
         printf("\rTrue starting fraction       =  %g\n",
                (double) (lorec * ptsperrec) / s.N);
@@ -730,27 +782,36 @@ int main(int argc, char *argv[])
                     }
                 }
 
-                /* Parallelize over candidates: the block being folded is        */
+                /* Parallelize over DM groups: the block being folded is          */
                 /* read-only here, and each candidate writes only its own         */
-                /* dedispersion scratch and rawfolds/buffers, so there is no      */
-                /* cross-candidate contention.  The `for` end barrier joins the   */
-                /* read-ahead thread, so the ring rotate below is safe.           */
+                /* rawfolds/buffers, so there is no cross-candidate contention.    */
+                /* One thread dedisperses each group's block once into its private */
+                /* scratch, then folds every group member off that shared block --  */
+                /* identical arithmetic to per-candidate dedispersion because the   */
+                /* members share an idispdts table.  The `for` end barrier joins    */
+                /* the read-ahead thread, so the ring rotate below is safe.         */
                 if (RAWDATA) {
 #ifdef _OPENMP
 #pragma omp for schedule(dynamic)
 #endif
-                    for (c = 0; c < ncand; c++) {
-                        int tid = 0;
+                    for (g = 0; g < ngroups; g++) {
+                        int tid = 0, gi, gs = group_start[g], gn = group_size[g];
+                        int rep = group_member[gs];
 #ifdef _OPENMP
                         tid = omp_get_thread_num();
 #endif
                         float *sub_c = subdatas[tid];
                         dedisp_subbands(reader->current_clean, reader->last_clean,
-                                        worklen, numchan, fc[c].idispdts, fc[c].nsub,
-                                        sub_c);
-                        fold_subband_block(cmd, &fc[c], sub_c, worklen, cur_numread,
-                                           ii, fold_time0, fc[c].foldf, fc[c].foldfd,
-                                           fc[c].foldfdd, buffers[c], phasesadded[c]);
+                                        worklen, numchan, fc[rep].idispdts,
+                                        fc[rep].nsub, sub_c);
+                        for (gi = 0; gi < gn; gi++) {
+                            int cc = group_member[gs + gi];
+                            fold_subband_block(cmd, &fc[cc], sub_c, worklen,
+                                               cur_numread, ii, fold_time0,
+                                               fc[cc].foldf, fc[cc].foldfd,
+                                               fc[cc].foldfdd, buffers[cc],
+                                               phasesadded[cc]);
+                        }
                     }
                 } else {
                     float *foldbuf = insub_bufs[insub_cur];
@@ -819,8 +880,12 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
-    if (RAWDATA)
+    if (RAWDATA) {
         free_rawblock_reader(reader);
+        free(group_start);
+        free(group_size);
+        free(group_member);
+    }
     close_rawfiles(&s);
 
     /*

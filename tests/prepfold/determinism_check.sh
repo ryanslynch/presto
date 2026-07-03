@@ -58,6 +58,23 @@ cmp_one detsub4_subDM241.pfd.bestprof  m_single_subDM241_8.66ms_Cand.pfd.bestpro
 cmp_one detsub4_subDM242.pfd.bestprof  m_single_subDM242_8.66ms_Cand.pfd.bestprof
 cmp_one detsub4_subDM243.pfd.bestprof  m_single_subDM243_8.66ms_Cand.pfd.bestprof
 
+# --- Grouped DMs (Stage 6 #4): two candidates share DM 238.30, so they land in --
+# one DM group and dedisperse once, folding both off the shared block.  Confirm
+# (a) the grouped output is deterministic across thread counts, and (b) each group
+# member still matches an independent single-prepfold run at its own period -- i.e.
+# dedispersing once and folding many is bit-identical to folding each separately.
+echo "=== grouped DMs: ncpus 1/4/8 (dedisperse once, fold many) ==="
+run_set grouped detgrp multi_cands_grouped.txt -nsub 64 $DATA
+for cand in grpA grpB; do triple $cand detgrp; done
+
+echo "=== grouped member vs single prepfold (dedisperse-once == fold-separately) ==="
+prepfold $COMMON -nsub 64 -p 8.66430621957513e-3 -pd -5.01154755640048e-11 \
+    -dm 238.30 -o g_single_grpA $DATA > g_single_grpA.log 2>&1
+prepfold $COMMON -nsub 64 -p 8.50000000000000e-3 -pd 0.0 \
+    -dm 238.30 -o g_single_grpB $DATA > g_single_grpB.log 2>&1
+cmp_one detgrp4_grpA.pfd.bestprof "$(ls g_single_grpA_*Cand.pfd.bestprof 2>/dev/null | head -1)"
+cmp_one detgrp4_grpB.pfd.bestprof "$(ls g_single_grpB_*Cand.pfd.bestprof 2>/dev/null | head -1)"
+
 echo "---"
 [ "$FAIL" -eq 0 ] && echo "DETERMINISM+NCPUS: ALL PASS" || echo "DETERMINISM+NCPUS: FAILURES PRESENT"
 exit $FAIL
