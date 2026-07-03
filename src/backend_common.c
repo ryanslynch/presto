@@ -883,8 +883,15 @@ rawblock_reader *rawblock_reader_init(struct spectra_info *s, mask * obsmask)
 // dedisperse-many path.  Mirrors the first-time allocation done inside
 // read_subbands()/prep_subbands(), but stores the state in a passed-in
 // context instead of file-scope statics so several candidates (and the
-// deferred buffer swap) can be handled at once.
+// read-ahead of the next block) can be handled at once.
+//
+// Uses a THREE-slot ring rather than a two-buffer ping-pong so the next
+// block can be read and cleaned into the free (prefetch) slot while the
+// current block -- and the previous block it wraps back into -- are still
+// being folded.  current_clean, last_clean and prefetch_clean always name
+// three distinct slots, so the read-ahead never aliases folding data.
 {
+    int i;
     rawblock_reader *reader =
         (rawblock_reader *) malloc(sizeof(rawblock_reader));
 
@@ -896,28 +903,36 @@ rawblock_reader *rawblock_reader_init(struct spectra_info *s, mask * obsmask)
 
     // Needs to be twice as large for buffering if adding observations together
     reader->frawdata = gen_fvect(2 * s->num_channels * s->spectra_per_subint);
-    reader->rawdata1 = gen_fvect(s->spectra_per_subint * s->num_channels);
-    reader->rawdata2 = gen_fvect(s->spectra_per_subint * s->num_channels);
-    reader->current_clean = reader->rawdata1;
-    reader->last_clean = reader->rawdata2;
+    for (i = 0; i < 3; i++)
+        reader->slots[i] = gen_fvect(s->spectra_per_subint * s->num_channels);
+    reader->last_clean = reader->slots[0];
+    reader->current_clean = reader->slots[1];
+    reader->prefetch_clean = reader->slots[2];
     // Make the transpose plan once.  FFTW_MEASURE clobbers the buffer
     // during planning, so this must happen before any real data is read
-    // in.  We execute it with new-array execution on whichever buffer is
-    // "current", exactly as prep_subbands() does across its SWAPs.
+    // in.  We execute it with new-array execution on whichever slot is the
+    // read target, exactly as prep_subbands() does across its SWAPs.  The
+    // new-array variant fftwf_execute_r2r() is documented thread-safe, so
+    // the read-ahead may run it on the prefetch slot while folds proceed.
     reader->tplan1 = plan_transpose(s->spectra_per_subint, s->num_channels,
-                                    reader->current_clean, reader->current_clean);
+                                    reader->slots[0], reader->slots[0]);
     return reader;
 }
 
 
 void rawblock_reader_advance(rawblock_reader * reader)
-// Roll the just-cleaned "current" block into the "last" slot so the next
-// read overwrites the now-stale block.  Call this once per raw block,
-// after every candidate has dedispersed the (current, last) pair.  This
-// is the deferred half of prep_subbands()'s SWAP(currentdata, lastdata).
+// Rotate the three-slot ring one step: the block just folded becomes the
+// wrap source (last), the read-ahead block becomes the block to fold
+// (current), and the now-stale wrap source becomes the free slot the next
+// read-ahead fills.  Call this once per raw block, after every candidate
+// has consumed the (current, last) pair AND the read-ahead into the
+// prefetch slot has completed.  This is the deferred, three-way form of
+// prep_subbands()'s SWAP(currentdata, lastdata).
 {
-    float *tmpswap;
-    SWAP(reader->current_clean, reader->last_clean);
+    float *freed = reader->last_clean;
+    reader->last_clean = reader->current_clean;
+    reader->current_clean = reader->prefetch_clean;
+    reader->prefetch_clean = freed;
 }
 
 
@@ -925,41 +940,40 @@ int read_clean_rawblock(rawblock_reader * reader, struct spectra_info *s,
                         int *maskchans, int *nummasked, mask * obsmask,
                         int *padding)
 // Read one raw spectra block from disk and clean it (mask/clip/
-// ignorechans/transpose) into reader->current_clean, in channel-major
-// order.  This is the DM-independent half of read_subbands(); the caller
-// then de-disperses reader->current_clean (with reader->last_clean
-// supplying samples that wrap back across the block boundary) to each
-// candidate's subbands via dedisp_subbands(), and calls
-// rawblock_reader_advance() once all candidates have consumed the pair.
+// ignorechans/transpose) into reader->prefetch_clean, in channel-major
+// order.  This is the DM-independent half of read_subbands().  It writes
+// ONLY the prefetch slot (never current/last), so it may run concurrently
+// with the folds of the current block; the caller rotates the ring with
+// rawblock_reader_advance() afterwards.  The caller drives priming (read
+// block 0 into last, block 1 into current, via advances) and then reads
+// each subsequent block ahead while the previous one folds.
 //
-// Returns s->spectra_per_subint on a foldable block.  Returns 0 on the
-// first-time prime (which only fills the "last" slot, exactly like
-// read_subbands()'s first-time path) and on EOF.
+// The block-read order, and the currentspectra value each block is cleaned
+// at, are identical to the old current-slot reader: the priming block is
+// cleaned at the seed value with no increment (firsttime), and every block
+// after it is cleaned before currentspectra advances.  So the cleaned
+// blocks -- and therefore all downstream folds -- stay bit-identical.
+//
+// Returns s->spectra_per_subint on a successful read, or 0 on EOF.
 {
     *nummasked = 0;
-    if (reader->firsttime) {
-        // Prime: read and clean the first block, then roll it into the
-        // "last" slot so the next (real) block can be dedispersed against
-        // it.  No foldable data is produced yet.
-        if (!s->get_rawblock(reader->frawdata, s, padding)) {
+    if (!s->get_rawblock(reader->frawdata, s, padding)) {
+        if (reader->firsttime) {
             perror("Error: problem reading the raw data file in read_clean_rawblock()");
             exit(-1);
         }
-        clean_rawblock(reader->current_clean, reader->frawdata, s,
-                       reader->currentspectra, reader->tplan1, reader->mask,
-                       maskchans, nummasked, obsmask);
-        rawblock_reader_advance(reader);
-        reader->firsttime = 0;
         return 0;
     }
-    if (!s->get_rawblock(reader->frawdata, s, padding))
-        return 0;
-    clean_rawblock(reader->current_clean, reader->frawdata, s,
+    clean_rawblock(reader->prefetch_clean, reader->frawdata, s,
                    reader->currentspectra, reader->tplan1, reader->mask,
                    maskchans, nummasked, obsmask);
-    // Increment AFTER cleaning, matching read_subbands(): the first real
-    // block is cleaned with currentspectra still at its primed value.
-    reader->currentspectra += s->spectra_per_subint;
+    // Match read_subbands(): the priming block is cleaned at the seed value
+    // and does NOT advance currentspectra; every block after it advances
+    // after cleaning.  (The first real block thus shares the primed value.)
+    if (reader->firsttime)
+        reader->firsttime = 0;
+    else
+        reader->currentspectra += s->spectra_per_subint;
     return s->spectra_per_subint;
 }
 
@@ -967,12 +981,13 @@ int read_clean_rawblock(rawblock_reader * reader, struct spectra_info *s,
 void free_rawblock_reader(rawblock_reader * reader)
 // Free a raw-block reader context and its buffers/plan.
 {
+    int i;
     if (reader == NULL)
         return;
     fftwf_destroy_plan(reader->tplan1);
     vect_free(reader->frawdata);
-    vect_free(reader->rawdata1);
-    vect_free(reader->rawdata2);
+    for (i = 0; i < 3; i++)
+        vect_free(reader->slots[i]);
     free(reader);
 }
 
