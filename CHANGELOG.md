@@ -10,6 +10,10 @@
    `data_path()` in the new `python/presto/_datadir.py`.  The man pages (`docs/*.1`)
    now install to `{prefix}/share/man/man1`, so `man rfifind` (etc.) works with no
    extra setup (conda activation already puts that on `MANPATH`).
+ * `makewisdom` is now installed and writes `fftw_wisdom.txt` directly into the
+   PRESTO data directory (`{prefix}/share/presto`, or `$PRESTO/lib` if set) where the
+   tools look for it at runtime, so no manual copying is needed.  An optional path
+   argument overrides the destination.
  * Removed the long-obsolete `a2x` ASCII-to-PostScript helper (`bin/a2x.sh`,
    `lib/a2x.ps`, `lib/a2xshell.ps`) and the dead code that used it: the unused
    `src/cand_output.c` routines (`file_reg_candidates`/`file_bin_candidates`) and the

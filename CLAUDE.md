@@ -47,8 +47,9 @@ and installs into `.pixi/envs/default`, so it never touches a manually managed `
 
 Uninstall: `ninja uninstall -C build` and `pip uninstall presto`.
 
-`makewisdom` (built to `build/src/`, not installed) generates `fftw_wisdom.txt`; move it to
-`$PRESTO/lib` for slightly faster FFTs.
+`makewisdom` (installed) generates `fftw_wisdom.txt` for slightly faster FFTs, writing it
+straight to where the tools look for it at runtime — `{prefix}/share/presto` (or `$PRESTO/lib`
+if `PRESTO` is set). Pass an explicit path argument to override the destination.
 
 ## Tests
 

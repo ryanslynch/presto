@@ -35,8 +35,10 @@ Python resolve it with the same search order — `$PRESTO/lib` (optional overrid
 `presto_data_path()` (used by `database.c`/`fftcalls.c`) and `python/presto/_datadir.py`
 `data_path()` (used by `pypsrcat.py`) implement this; `check_meson_build.py` now treats
 `PRESTO` as optional. FFTW wisdom is machine-specific and no longer shipped (soft-warns if
-absent). Validated: catalog reads (4303 psrs) and `pypsrcat` import/regen work with `PRESTO`
-unset; `test_presto_python.py` passes unset.
+absent); `makewisdom` is now installed and writes `fftw_wisdom.txt` straight into that same
+data directory (via `presto_data_writepath()`), with an optional path-override argument.
+Validated: catalog reads (4303 psrs) and `pypsrcat` import/regen work with `PRESTO` unset;
+`test_presto_python.py` passes unset.
 
 ### Reduce/remove the Fortran dependency
 

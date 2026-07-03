@@ -84,7 +84,7 @@ And that should do it! You can quickly test to see if most things are working by
 
 Another good test is to see if you can run and fit the default profile in `pygaussfit.py`
 
-If you want to run `makewisdom` for slightly faster FFT calls, it is located in `$PRESTO/build/src`. Just run it from there, and then copy or move the resulting `fftw_wisdom.txt` file into `{prefix}/share/presto` (or into `$PRESTO/lib` if you have `PRESTO` set as an override). PRESTO looks for it there at runtime.
+If you want slightly faster FFT calls, just run the installed `makewisdom`. It writes `fftw_wisdom.txt` straight into `{prefix}/share/presto` (or `$PRESTO/lib` if you have `PRESTO` set), which is where PRESTO looks for it at runtime — no manual copying needed. You can pass an explicit output path as an argument to override the destination.
 
 Note that you can uninstall everything via:
 
@@ -205,7 +205,7 @@ Note that you can uninstall everything via:
 
 16. **Run `makewisdom` to have (slightly) fast FFTs**
 
-    Just run `$PRESTO/build/src/makewisdom`. It takes about 10-20 min to run, so be patient. Note that the `fftw_wisdom.txt` file will be located in `$PRESTO/build/src`, so you will need to move it to `$PRESTO/lib` so that PRESTO can find it.
+    Just run `makewisdom` (it is installed to `{prefix}/bin`). It takes about 10-20 min to run, so be patient. It writes `fftw_wisdom.txt` directly into `{prefix}/share/presto` (or `$PRESTO/lib` if you have `PRESTO` set), which is where PRESTO looks for it at runtime, so no manual move is needed. To write it elsewhere, pass an output path as an argument.
 
 17. **Go find pulsars!**
     

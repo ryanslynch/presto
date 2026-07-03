@@ -1,16 +1,19 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <math.h>
 #include "meminfo.h"
+#include "misc_utils.h"
 #include "fftw3.h"
 
 #ifdef USEDMALLOC
 #include "dmalloc.h"
 #endif
 
-int main(void)
+int main(int argc, char *argv[])
 {
     FILE *wisdomfile;
+    char *wisdomfilenm;
     fftwf_plan plan;
     fftwf_complex *inout;
     int ii, fftlen;
@@ -74,11 +77,26 @@ int main(void)
         fftwf_free(inout);
     }
 
-    printf("Exporting wisdom to 'fftw_wisdom.txt'\n");
+    /* Write to an explicit path if given, else to the PRESTO data directory
+     * ($PRESTO/lib if set, otherwise <prefix>/share/presto) where the tools
+     * look for it at runtime. */
+    if (argc > 1)
+        wisdomfilenm = strdup(argv[1]);
+    else
+        wisdomfilenm = presto_data_writepath("fftw_wisdom.txt");
+
+    printf("Exporting wisdom to '%s'\n", wisdomfilenm);
 
     /* Open wisdom file for writing... */
 
-    wisdomfile = fopen("fftw_wisdom.txt", "w");
+    wisdomfile = fopen(wisdomfilenm, "w");
+    if (wisdomfile == NULL) {
+        printf("\nError:  Could not open '%s' for writing.\n", wisdomfilenm);
+        printf("        Pass an explicit output path as an argument, or make\n");
+        printf("        sure the directory exists and is writable.\n\n");
+        free(wisdomfilenm);
+        return (1);
+    }
 
     /* Write the wisdom... */
 
@@ -87,6 +105,7 @@ int main(void)
     /* Cleanup... */
 
     fclose(wisdomfile);
+    free(wisdomfilenm);
     printf("Done.\n\n");
 
     return (0);

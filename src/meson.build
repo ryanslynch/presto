@@ -7,8 +7,8 @@ executable('fitsdelcol', 'fitsdelcol.c',
 executable('fitsdelrow', 'fitsdelrow.c',
     dependencies: [fits, libm], include_directories: inc, install: true)
 
-executable('makewisdom', 'makewisdom.c',
-    dependencies: [fftw, libm], include_directories: inc, install: false)
+executable('makewisdom', 'makewisdom.c', 'datadir.c',
+    dependencies: [fftw, libm], include_directories: inc, install: true)
 
 executable('mjd2cal', 'mjd2cal.c', 'djcl.c',
     dependencies: libm, include_directories: inc, install: true)
