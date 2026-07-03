@@ -212,6 +212,14 @@ things to be removed.
 **[DONE]** `dftfold` (outdated, unused, no references elsewhere in the tree) was removed
 while doing the `.cli` Description/Author/SeeAlso pass below.
 
+**[DONE]** `a2x` (the old ASCII→PostScript helper) and its files (`bin/a2x.sh`, `lib/a2x.ps`,
+`lib/a2xshell.ps`) were removed, along with the dead code that shelled out to it:
+`src/cand_output.c` (both `file_reg_candidates`/`file_bin_candidates` were unused — the former
+only by the already-broken legacy `tests/test_apps.c`) and its `presto.h` prototypes, plus the
+commented-out a2x block in `minifft.c`. The dead `tests/test_apps.c` (missing `fftapps.h`/
+`plotting.h`, unbuildable) and its `test_fdot`/`test_plot`/`test_finterp` `.mak` files were
+removed too.
+
 ### Replace code of questionable origin or which can be replaced with GSL or ERFA (or scipy)
 
 - One or two of the .c files (e.g. `amoeba.c` and `median.c`, plus parts of `misc_utils.c`) 

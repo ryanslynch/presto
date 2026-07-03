@@ -33,7 +33,7 @@ executable('un_sc_td', 'un_sc_td.c', install: false)
 
 libpresto = library(
     'presto', 'amoeba.c', 'atwood.c', 'barycenter.c', 'birdzap.c',
-    'cand_output.c', 'characteristics.c', 'chkio.c', 'cldj.c',
+    'characteristics.c', 'chkio.c', 'cldj.c',
     'clipping.c', 'corr_prep.c', 'corr_routines.c', 'correlations.c',
     'database.c', 'datadir.c', 'dispersion.c', 'djcl.c', 'fastffts.c',
     'fftcalls.c', 'fitsfile.c', 'fold.c', 'fresnl.c',

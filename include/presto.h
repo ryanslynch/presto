@@ -679,16 +679,6 @@ void print_candidate(fourierprops * cand, double dt, long N, \
 void print_bin_candidate(binaryprops * cand, int numerrdigits);
 /* Outputs a 2 column summary of all the properties or a fourier peak  */
 
-void file_reg_candidates(fourierprops cand[], char *notes, int numcands, \
-			 double dt, long N, double nph, 
-			 char name[], char longname[]);
-/* Outputs a .ps file describing all the candidates from a search.  */
-
-void file_bin_candidates(binaryprops cand[], char *notes, \
-			 int numcands, char name[]);
-/* Outputs a .ps file describing all the binary candidates from a    */
-/*   binary search.*/
-
 
 /*  get_candidates.c:  */
 /*  Functions for manipulating candidate files */

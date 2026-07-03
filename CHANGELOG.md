@@ -10,6 +10,10 @@
    `data_path()` in the new `python/presto/_datadir.py`.  The man pages (`docs/*.1`)
    now install to `{prefix}/share/man/man1`, so `man rfifind` (etc.) works with no
    extra setup (conda activation already puts that on `MANPATH`).
+ * Removed the long-obsolete `a2x` ASCII-to-PostScript helper (`bin/a2x.sh`,
+   `lib/a2x.ps`, `lib/a2xshell.ps`) and the dead code that used it: the unused
+   `src/cand_output.c` routines (`file_reg_candidates`/`file_bin_candidates`) and the
+   already-broken legacy test `tests/test_apps.c` (plus its `.mak` files).
  * Polyco generation (e.g. `prepfold -timing`) now uses **tempo2** (which is on
    conda-forge) rather than TEMPO, via `tempo2 -tempo1 -polyco`, which writes
    TEMPO1-format polycos.  Together with the ERFA barycentering below, **PRESTO no
