@@ -79,14 +79,14 @@ void read_inf_line_valstr(FILE * infofile, char *valstr, char *errdesc)
 
 double chk_str2double(char *instr, char *desc)
 {
-    char tmp[100], *sptr = instr, *endptr;
+    char tmp[512], *sptr = instr, *endptr;
     double retval;
 
     retval = strtod(sptr, &endptr);
     if (retval == 0.0 && endptr == instr) {
-        sprintf(tmp,
-                "Error:  can not convert '%s' to a double (%s) in chk_str2double()\n",
-                instr, desc);
+        snprintf(tmp, sizeof(tmp),
+                 "Error:  can not convert '%s' to a double (%s) in chk_str2double()\n",
+                 instr, desc);
         perror(tmp);
         exit(EXIT_FAILURE);
     }
@@ -95,23 +95,23 @@ double chk_str2double(char *instr, char *desc)
 
 long chk_str2long(char *instr, char *desc)
 {
-    char tmp[100], *sptr = instr, *endptr;
+    char tmp[512], *sptr = instr, *endptr;
     long retval;
 
     errno = 0;
     retval = strtol(sptr, &endptr, 10);
     if ((errno == ERANGE && (retval == LONG_MAX || retval == LONG_MIN))
         || (errno != 0 && retval == 0)) {
-        sprintf(tmp,
-                "Error:  can not convert '%s' to an int/long (%s) in chk_str2long()\n",
-                instr, desc);
+        snprintf(tmp, sizeof(tmp),
+                 "Error:  can not convert '%s' to an int/long (%s) in chk_str2long()\n",
+                 instr, desc);
         perror(tmp);
         exit(EXIT_FAILURE);
     }
     if (endptr == instr) {
-        sprintf(tmp,
-                "Error:  No digits were found in '%s' for %s in chk_str2long()\n",
-                instr, desc);
+        snprintf(tmp, sizeof(tmp),
+                 "Error:  No digits were found in '%s' for %s in chk_str2long()\n",
+                 instr, desc);
         perror(tmp);
         exit(EXIT_FAILURE);
     }
