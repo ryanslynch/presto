@@ -226,7 +226,8 @@ removed too.
 
 - One or two of the .c files (e.g. `amoeba.c` and `median.c`, plus parts of `misc_utils.c`) 
   originate in Numerical Recipes. It would be great to replace those.
-- Are `solvopt.c` and `apprgrdn.c` used anywhere? If so, replace with GSL?  Else remove.
+- **[DONE]** `solvopt.c` and `apprgrdn.c` were dead — no callers anywhere and not even in
+  the meson build (never compiled) — so they were simply removed.
 - Replace the randlib stuff used in `makedata.c` (and elsewhere?) with GSL.
 - Replace various little time and coordinate utilites (e.g. `cldj.c`, some routines in 
   `misc_utils.c`, and the calculations in `mjd2cal` and `cal2mjd` with ERFA calls.)
