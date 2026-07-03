@@ -10,6 +10,17 @@ Package all of PRESTO — compiled code **and** Python modules — for conda-for
 installed trivially with `conda`/`pixi`. Most of the items below are prerequisites or
 simplifications that make clean packaging possible.
 
+**ERFA packaging wrinkle:** conda-forge has **no C-library ERFA package** (verified 2026-07:
+no `erfa`/`liberfa` feedstock exists, and `pyerfa` only ships a private Python extension — no
+`erfa.h` or `liberfa.so` to link against; Meson WrapDB has no erfa entry either). PRESTO
+handles this generally via `subprojects/erfa.wrap`: meson uses system ERFA when present and
+otherwise downloads/builds the release tarball automatically (offline: pre-place the tarball
+in `subprojects/packagecache/`). Since conda-forge builds have no network access, the PRESTO
+recipe should either (a) list the ERFA tarball as an extra source unpacked into
+`subprojects/packagecache/` (works today, but statically vendors it), or (b) — cleaner —
+submit a trivial `liberfa` feedstock to conda-forge first (autotools or meson build, ~30-line
+recipe) and depend on it. Prefer (b).
+
 ### Remove environment-variable requirements
 
 Stop requiring `PRESTO` (and other) environment variables to be set. These currently locate
@@ -104,15 +115,33 @@ prior TOAs exactly; aarchiba agrees within ~0.1 sigma.
 
 ### Remove the TEMPO dependency
 
-- Barycentering: use **ERFA** instead of TEMPO.
+- **[DONE]** Barycentering: use **ERFA** instead of TEMPO. `barycenter()` in
+  `src/barycenter.c` now computes UTC→TT→TDB (ERFA's built-in leap seconds + `eraDtdb`),
+  the Roemer delay (`eraEpv00` analytic ephemeris + `eraPvtob`/`eraC2i06a` for the
+  observatory, from a new internal ITRF table in `src/observatories.c`), and the solar
+  Shapiro delay, all in-process with **no external files**. v/c comes from a central
+  difference of the total delay, matching TEMPO's `femit/fobs - 1` definition (positive
+  = moving away). Two conventions matter: PRESTO MJDs count elapsed-seconds/86400 from
+  UTC midnight (not ERFA's "stretched" leap-day quasi-JD — up to 1 s different on a
+  leap-second day), and UT1≈UTC is used (≤1.4 μs). Validated vs TEMPO/DE405 over 14
+  observatories × 7 sky positions × 8 epochs (1995–2023, incl. leap-second days):
+  absolute agreement ~14 μs max (the eraEpv00-vs-DE405 ephemeris difference), ~1.3 μs
+  differential drift over a dense 12-hr series (mostly TEMPO's measured UT1 vs our
+  UT1≈UTC), and |Δ(v/c)| ≲ 3e-9 (vs typical |v/c| ~1e-4). The old code is retained as
+  `barycenter_tempo()` and `src/check_bary_erfa.c` re-runs the full comparison anytime
+  (needs TEMPO); `tests/test_barycenter.py` checks against frozen TEMPO values
+  (`tests/bary_tempo_reference.txt`) with no TEMPO needed. The `ephem` argument is now
+  ignored. Note: polycos (`prepfold -timing`, `polycos.py`) still require TEMPO.
 - Polyco creation: use **tempo2** with tempo1-style predictors.
 
 ### Adopt ERFA/SOFA for astronomy/time routines
 
-Replace hand-rolled code with ERFA/SOFA where possible: `mjd2cal`, `cal2jd`, certain routines in
-`misc_utils.c`, and especially the barycenter↔topocenter calculations. This will require:
-- a database of observatory positions (from PINT or TEMPO), and
-- possibly a leap-seconds list.
+Replace hand-rolled code with ERFA/SOFA where possible: `mjd2cal`, `cal2jd`, and certain routines
+in `misc_utils.c`. The barycenter↔topocenter calculations are done (see above), which also
+provided the two prerequisites listed here: the observatory-position database now lives in
+`src/observatories.c` (coordinates from TEMPO's obsys.dat, with PINT/tempo2 filling gaps), and
+leap seconds come from ERFA's built-in table (`eraDat` — note this means very new leap seconds,
+should they ever resume, require an ERFA update).
 
 ### Replace numerical routines with GSL
 
@@ -122,6 +151,18 @@ Replace the in-tree median and statistics calls with well-tested GSL equivalents
 
 Remove all code for old backends (Spigot, BCPM, WAPP, and others). This is believed to affect
 only the `readfile` code path.
+
+## Nice-to-haves
+
+### Revitalize CI
+
+The old Travis CI setup (`.travis/`, `.travis.yml`) was stale for years and has been removed
+(2026-07). Set up modern CI — presumably GitHub Actions — that builds the meson project and
+Python package and runs the test suite: `tests/test_barycenter.py`, `tests/test_presto_python.py`
+(now TEMPO-free), the fftfit tests in `python/fftfit_src/`, and ideally the prepfold suite
+(`tests/prepfold/prepfold_tests.sh`, which downloads its ~100 MB fixture and needs TEMPO for
+the polyco-based folds). A linux + macOS matrix would also catch the recurring macOS
+build/rpath issues early.
 
 ## Other known issues to fix
 

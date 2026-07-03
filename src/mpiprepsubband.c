@@ -369,10 +369,10 @@ int main(int argc, char *argv[])
         MPI_Bcast(&good_padvals, 1, MPI_INT, 0, MPI_COMM_WORLD);
     }
 
-    // The number of topo to bary time points to generate with TEMPO
+    // The number of topo to bary time points to generate
     numbarypts = (int) (s.T * 1.1 / TDT + 5.5) + 1;
 
-    // Identify the TEMPO observatory code
+    // Identify the observatory code
     {
         char *outscope = (char *) calloc(40, sizeof(char));
         telescope_to_tempocode(idata.telescope, outscope, obs);
@@ -537,7 +537,7 @@ int main(int argc, char *argv[])
         for (ii = 0; ii < numbarypts; ii++)
             ttoa[ii] = tlotoa + TDT * ii / SECPERDAY;
 
-        /* Call TEMPO for the barycentering */
+        /* Barycenter with ERFA */
 
         if (myid == 0) {
             double maxvoverc = -1.0, minvoverc = 1.0, *voverc = NULL;

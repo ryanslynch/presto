@@ -19,6 +19,9 @@ glib = dependency('glib-2.0')
 fftw = dependency('fftw3f') # Note the 'f' for single-precision version!
 fits = dependency('cfitsio')
 gsl = dependency('gsl')
+# If ERFA is not installed on the system, meson automatically downloads
+# and builds it via subprojects/erfa.wrap (see INSTALL.md)
+erfa = dependency('erfa')
 x11 = dependency('x11')
 png = dependency('libpng')
 omp = dependency('openmp', required: false)

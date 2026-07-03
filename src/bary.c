@@ -8,7 +8,7 @@
 
 int main(int argc, char *argv[])
 /* Convert topocentric arrival times (from stdin) to */
-/* barycentric times using TEMPO.                    */
+/* barycentric times using the ERFA library.         */
 {
     long i, N = 0;
     char obs[3], ra[30], dec[30], ephem[10], tmp[40];
@@ -31,8 +31,8 @@ int main(int argc, char *argv[])
         printf
             ("     dm is the (optional) Dispersion Measure of the obs (cm^-3 pc)\n");
         printf("        dm defaults to 0.0 cm^-3 pc.\n");
-        printf("     ephem is the (optional) ephemeris to use.  Must be supported by TEMPO.\n");
-        printf("        Examples include 'DE200', 'DE421', or 'DE436'.  Defaults is 'DE421'.\n\n");
+        printf("     ephem is deprecated and ignored (kept for compatibility):\n");
+        printf("        barycentering uses the ERFA library's built-in ephemeris.\n\n");
         printf("   Notes:  The topocentric times must be in UTC MJD format.\n");
         printf("     There is a maximum limit of 5000 input times.\n\n");
         exit(0);
@@ -66,13 +66,13 @@ int main(int argc, char *argv[])
     fprintf(stderr, "            by Scott M. Ransom\n");
     fprintf(stderr, "               20 July 1998\n\n");
 
-    fprintf(stderr, "  Calling TEMPO with %ld topocentic time(s).  Using:\n", N);
+    fprintf(stderr, "  Barycentering %ld topocentic time(s) with ERFA.  Using:\n", N);
     fprintf(stderr, "                  RA = '%s'\n", ra);
     fprintf(stderr, "                 DEC = '%s'\n", dec);
     fprintf(stderr, "      Obs freq (MHz) = %.6g\n", topof);
     fprintf(stderr, "        DM (pc/cm^3) = %.4g\n", dm);
-    fprintf(stderr, "           Ephemeris = '%s'\n\n", ephem);
-    /* Call TEMPO */
+
+    /* Do the barycentering */
 
     barycenter(topotimes, barytimes, voverc, N, ra, dec, obs, ephem);
 

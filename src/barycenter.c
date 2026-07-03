@@ -1,4 +1,6 @@
 #include <presto.h>
+#include <erfa.h>
+#include <erfam.h>
 
 double doppler(double freq_observed, double voverc)
 /* This routine returns the frequency emitted by a pulsar */
@@ -9,6 +11,183 @@ double doppler(double freq_observed, double voverc)
     return freq_observed * (1.0 + voverc);
 }
 
+
+static double bary_delay(double mjd_tt, double mjd_ut1, double nhat[3],
+                         double rc2i[3][3], double sp, int geocentric,
+                         double elong, double phi, double hm,
+                         double u_km, double v_km)
+/* Return the total delay (in seconds) between a topocentric TT MJD  */
+/* and the corresponding infinite-frequency barycentric TDB MJD:     */
+/* Einstein (TDB-TT) + Roemer + solar Shapiro.  The observatory is   */
+/* described by its WGS84 geodetic coordinates (elong/phi/hm), its   */
+/* distance from the Earth's spin axis (u_km) and from the equator   */
+/* plane (v_km), or by geocentric=1 for the geocenter.  rc2i is the  */
+/* GCRS-to-CIRS (precession-nutation) matrix and sp the TIO locator, */
+/* both slowly-varying and so evaluated once per epoch by the caller. */
+{
+    double pvh[2][3], pvb[2][3], pvc[2][3], pvg[2][3];
+    double robs_au[3], rsun_au[3], rsun;
+    double era, dtdb, roemer, shapiro;
+    int ii;
+
+    /* Heliocentric and barycentric Earth state (AU, AU/day).  Using TT */
+    /* as the TDB time argument here is insignificant (< 1 ns).         */
+    eraEpv00(ERFA_DJM0, mjd_tt, pvh, pvb);
+
+    /* Geocentric position of the observatory in the GCRS (m) */
+    if (geocentric) {
+        for (ii = 0; ii < 3; ii++)
+            pvg[0][ii] = 0.0;
+    } else {
+        era = eraEra00(ERFA_DJM0, mjd_ut1);
+        eraPvtob(elong, phi, hm, 0.0, 0.0, sp, era, pvc);       /* CIRS */
+        eraTrxpv(rc2i, pvc, pvg);                               /* -> GCRS */
+    }
+
+    /* Barycentric and heliocentric observatory positions (AU) */
+    for (ii = 0; ii < 3; ii++) {
+        robs_au[ii] = pvb[0][ii] + pvg[0][ii] / ERFA_DAU;
+        rsun_au[ii] = pvh[0][ii] + pvg[0][ii] / ERFA_DAU;
+    }
+
+    /* Einstein delay:  TDB - TT (s), including topocentric terms */
+    dtdb = eraDtdb(ERFA_DJM0, mjd_tt, fmod(mjd_ut1, 1.0), elong, u_km, v_km);
+
+    /* Roemer delay (s):  nhat . robs / c */
+    roemer = eraPdp(nhat, robs_au) * ERFA_AULT;
+
+    /* Solar Shapiro delay (s):  2 GMsun/c^3 = ERFA_SRS * ERFA_AULT.    */
+    /* The signal is retarded by -2GM/c^3 * ln(rsun + rsun.nhat) (+ a   */
+    /* constant absorbed into the pulsar's epoch), so correcting to the */
+    /* barycenter *adds* the logarithm.                                 */
+    rsun = eraPm(rsun_au);
+    shapiro = ERFA_SRS * ERFA_AULT * log(rsun + eraPdp(nhat, rsun_au));
+
+    return dtdb + roemer + shapiro;
+}
+
+
+void barycenter(double *topotimes, double *barytimes,
+                double *voverc, long N, char *ra, char *dec, char *obs, char *ephem)
+/* This routine uses the ERFA library to correct a vector of           */
+/* topocentric times (in *topotimes) to barycentric times              */
+/* (in *barytimes) assuming an infinite observation                    */
+/* frequency.  The routine also returns values for the                 */
+/* radial velocity of the observation site (in units of                */
+/* v/c) at the barycentric times.  All three vectors must              */
+/* be initialized prior to calling.  The vector length for             */
+/* all the vectors is 'N' points.  The topocentric times               */
+/* must be UTC MJDs; the barycentric times returned are TDB            */
+/* MJDs (as TEMPO has always returned).  The RA and DEC                */
+/* (J2000) of the observed object are passed as strings in             */
+/* the following format: "hh:mm:ss.ssss" for RA and                    */
+/* "dd:mm:ss.ssss" for DEC.  The observatory site is passed            */
+/* as a 2 letter ITOA code (see observatories.c).  The                 */
+/* ephemeris argument is accepted for backwards compatibility          */
+/* but is ignored:  ERFA uses its built-in analytical                  */
+/* ephemeris (eraEpv00), which agrees with the JPL DE                  */
+/* ephemerides at the few-km (i.e. ~10 microsec) level.                */
+{
+    long ii;
+    int h_or_d, m, geocentric, status;
+    double s, rar, decr, nhat[3], obs_xyz[3];
+    double elong = 0.0, phi = 0.0, hm = 0.0, u_km = 0.0, v_km = 0.0;
+    char obsname[32], radec[40];
+    static int firsttime = 1;
+    const double dt = 60.0;     /* baseline (s) for the velocity derivative */
+
+    /* Unit vector pointing towards the source.  Parse copies since */
+    /* ra_dec_from_string() modifies the string in place.           */
+    snprintf(radec, 40, "%s", ra);
+    ra_dec_from_string(radec, &h_or_d, &m, &s);
+    rar = hms2rad(h_or_d, m, s);
+    snprintf(radec, 40, "%s", dec);
+    ra_dec_from_string(radec, &h_or_d, &m, &s);
+    decr = dms2rad(h_or_d, m, s);
+    eraS2c(rar, decr, nhat);
+
+    /* Observatory position */
+    if (!obs_coords(obs, obs_xyz, obsname)) {
+        fprintf(stderr,
+                "\nError:  unrecognized observatory code '%s' in barycenter().\n"
+                "        Please add your observatory to src/observatories.c.\n",
+                obs);
+        exit(1);
+    }
+    geocentric = (obs_xyz[0] == 0.0 && obs_xyz[1] == 0.0 && obs_xyz[2] == 0.0);
+    if (!geocentric) {
+        eraGc2gd(ERFA_WGS84, obs_xyz, &elong, &phi, &hm);
+        u_km = sqrt(obs_xyz[0] * obs_xyz[0] + obs_xyz[1] * obs_xyz[1]) / 1000.0;
+        v_km = obs_xyz[2] / 1000.0;
+    }
+
+    if (firsttime && ephem != NULL && ephem[0] != '\0') {
+        printf("Barycentering in-process using ERFA "
+               "(the '%s' ephemeris request is ignored).\n", ephem);
+        firsttime = 0;
+    }
+
+    for (ii = 0; ii < N; ii++) {
+        double fd, dat, mjd_tt, mjd_ut1, d0, dp, dm;
+        double ddt = dt / SECPERDAY;
+        int iy, im, id;
+
+        /* UTC -> TT.  PRESTO's topocentric MJDs (from backend headers)  */
+        /* count elapsed seconds since UTC midnight divided by 86400, so */
+        /* apply the day's TAI-UTC directly rather than using ERFA's     */
+        /* "stretched" quasi-JD convention (they only differ during a    */
+        /* day that ends with a leap second, but then by up to 1 s).     */
+        /* UT1 ~ UTC is fine for the Earth rotation angle (|dUT1| <      */
+        /* 0.9 s gives < 1.4 us of Roemer delay).                        */
+        status = eraJd2cal(ERFA_DJM0, topotimes[ii], &iy, &im, &id, &fd);
+        if (status) {
+            fprintf(stderr,
+                    "\nError:  MJD %.12f is not a valid UTC in barycenter().\n",
+                    topotimes[ii]);
+            exit(1);
+        }
+        status = eraDat(iy, im, id, fd, &dat);
+        if (status < 0) {
+            fprintf(stderr,
+                    "\nError:  cannot get TAI-UTC for MJD %.12f in barycenter().\n",
+                    topotimes[ii]);
+            exit(1);
+        }
+        mjd_tt = topotimes[ii] + (dat + 32.184) / SECPERDAY;
+        mjd_ut1 = topotimes[ii];
+
+        /* The precession-nutation matrix and TIO locator change very   */
+        /* slowly:  evaluate them once per epoch and share them between */
+        /* the three delay evaluations below.                           */
+        double rc2i[3][3], sp;
+        eraC2i06a(ERFA_DJM0, mjd_tt, rc2i);
+        sp = eraSp00(ERFA_DJM0, mjd_tt);
+
+        d0 = bary_delay(mjd_tt, mjd_ut1, nhat, rc2i, sp, geocentric,
+                        elong, phi, hm, u_km, v_km);
+        barytimes[ii] = mjd_tt + d0 / SECPERDAY;
+
+        /* v/c comes from the rate of change of the total delay:         */
+        /* femit/fobs = dt_topo/dt_bary, so voverc = femit/fobs - 1      */
+        /* ~ -d(delay)/dt (TEMPO's convention: positive v/c means the    */
+        /* observatory moves *away* from the source).  This includes the */
+        /* Einstein-rate terms, just as TEMPO's did.  The UTC->TT offset */
+        /* is held fixed across the central difference.                  */
+        dp = bary_delay(mjd_tt + ddt, mjd_ut1 + ddt, nhat, rc2i, sp,
+                        geocentric, elong, phi, hm, u_km, v_km);
+        dm = bary_delay(mjd_tt - ddt, mjd_ut1 - ddt, nhat, rc2i, sp,
+                        geocentric, elong, phi, hm, u_km, v_km);
+        voverc[ii] = (dm - dp) / (2.0 * dt);
+    }
+}
+
+
+/*                                                                       */
+/* The original TEMPO-based implementation follows.  It is retained so   */
+/* that the ERFA implementation above can always be validated against    */
+/* it (see check_bary_erfa.c) -- it is not used by any PRESTO programs   */
+/* and requires the external 'tempo' executable when called.             */
+/*                                                                       */
 
 int read_resid_rec(FILE * file, double *toa, double *obsf)
 /* This routine reads a single record (i.e. 1 TOA) from */
@@ -82,8 +261,9 @@ int read_resid_rec(FILE * file, double *toa, double *obsf)
     }
 }
 
-void barycenter(double *topotimes, double *barytimes,
-                double *voverc, long N, char *ra, char *dec, char *obs, char *ephem)
+void barycenter_tempo(double *topotimes, double *barytimes,
+                      double *voverc, long N, char *ra, char *dec,
+                      char *obs, char *ephem)
 /* This routine uses TEMPO to correct a vector of           */
 /* topocentric times (in *topotimes) to barycentric times   */
 /* (in *barytimes) assuming an infinite observation         */
@@ -105,12 +285,12 @@ void barycenter(double *topotimes, double *barytimes,
     double fobs = 1000.0, femit, dtmp;
     char command[100], temporaryfile[100];
 
-    /* Make/chdir to a temp dir to avoid multiple prepfolds stepping on 
+    /* Make/chdir to a temp dir to avoid multiple prepfolds stepping on
      * each other.
      */
     char tmpdir[]  = "/tmp/prestoXXXXXX";
     if (mkdtemp(tmpdir)==NULL) {
-        fprintf(stderr, "barycenter: error creating temp dir.\n");
+        fprintf(stderr, "barycenter_tempo: error creating temp dir.\n");
         exit(1);
     }
     char *origdir = getcwd(NULL,0);
@@ -155,7 +335,7 @@ void barycenter(double *topotimes, double *barytimes,
 
     sprintf(command, "tempo bary.tmp > tempoout_times.tmp");
     if (system(command) == -1) {
-        fprintf(stderr, "\nError calling TEMPO in barycenter.c!\n");
+        fprintf(stderr, "\nError calling TEMPO in barycenter_tempo()!\n");
         exit(1);
     }
 
@@ -170,10 +350,6 @@ void barycenter(double *topotimes, double *barytimes,
         read_resid_rec(outfile, &barytimes[i], &dtmp);
     }
     fclose(outfile);
-
-    /* rename("itoa.out", "itoa1.out"); */
-    /* rename("bary.tmp", "bary1.tmp"); */
-    /* rename("bary.par", "bary1.par"); */
 
     /* Write the free format TEMPO file to begin barycentering */
 
@@ -215,7 +391,7 @@ void barycenter(double *topotimes, double *barytimes,
 
     sprintf(command, "tempo bary.tmp > tempoout_vels.tmp");
     if (system(command) == -1) {
-        fprintf(stderr, "\nError calling TEMPO in barycenter.c!\n");
+        fprintf(stderr, "\nError calling TEMPO in barycenter_tempo()!\n");
         exit(1);
     }
 
@@ -233,10 +409,6 @@ void barycenter(double *topotimes, double *barytimes,
     fclose(outfile);
 
     /* Cleanup the temp files */
-
-    /* rename("itoa.out", "itoa2.out"); */
-    /* rename("bary.tmp", "bary2.tmp"); */
-    /* rename("bary.par", "bary2.par"); */
 
     remove("tempo.lis");
     remove("tempoout_times.tmp");

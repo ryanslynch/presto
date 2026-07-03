@@ -8,7 +8,7 @@ With v5, we have switched to building and installing with [meson](https://mesonb
 **If you are interested in using Docker or Singularity containers of PRESTO, see the bottom of this file!**
 
 As always, there are a set of essential packages required to build PRESTO. This command should do it on a Debian/Ubuntu-like system:
-`apt install git build-essential libfftw3-bin libfftw3-dev libgsl28 libgsl-dev pgplot5 libglib2.0-dev libcfitsio-bin libcfitsio-dev libpng-dev latex2html gfortran tcsh autoconf libx11-dev python3-dev python3-numpy python3-pip`
+`apt install git build-essential libfftw3-bin libfftw3-dev libgsl28 libgsl-dev liberfa-dev pgplot5 libglib2.0-dev libcfitsio-bin libcfitsio-dev libpng-dev latex2html gfortran tcsh autoconf libx11-dev python3-dev python3-numpy python3-pip`
 
 Make sure that your `PRESTO` environment variable points to the top-level PRESTO git checkout. And make sure that `$PRESTO/lib` and `$PRESTO/bin` are **not** in your `PATH` or `LD_LIBRARY_PATH` or `PYTHONPATH` environment variables as we have required in the past. It is probably a good idea to clean your earlier compiles, as well. Just cd into the `src` directory and do a `make cleaner`, and then come back here.
 
@@ -102,29 +102,35 @@ Note that you can uninstall everything via:
 
     Make sure to set the `TEMPO` environment variable so that it points to the top level of the `TEMPO` code base.
 
-4.  **Install [GLIBv2](http://library.gnome.org/devel/glib/)**
+    Note: as of v5.3.1, TEMPO is no longer used for barycentering (that is now done in-process via ERFA), but it is still required for polyco generation (e.g. `prepfold -timing`).
+
+4.  **Install [ERFA](https://github.com/liberfa/erfa)** (optional -- can be automatic!)
+
+    ERFA does the barycentering-related astronomical calculations. If it is not already installed, **meson will automatically download and build it** as a subproject (via `subprojects/erfa.wrap`), so you can skip this step if your build machine has network access. To use a system copy instead: on Ubuntu the packages are `liberfa1` and `liberfa-dev`. Note that the `pyerfa` Python package (conda-forge/PyPI/astropy) does *not* provide the C library and headers that PRESTO needs. For a fully offline build without a system ERFA, download the [release tarball](https://github.com/liberfa/erfa/releases) and place it in `subprojects/packagecache/` (keeping the original filename) before running `meson setup`.
+
+5.  **Install [GLIBv2](http://library.gnome.org/devel/glib/)**
 
     On Linux machines this is almost certainly already on your system (check in `/usr/lib` and `/usr/include/glib*`). Although you may need to install a glib development package in order to have the required include files. On Ubuntu, the package you need is: `libglib2.0-dev`
 
-5.  **Install [GSL](https://www.gnu.org/software/gsl/)**
+6.  **Install [GSL](https://www.gnu.org/software/gsl/)**
 
     I highly recommend that you use pre-compiled packages for your OS/distribution! For example, Ubuntu has good GSL packages: `libgsl28` and `libgsl-dev`.
 
-6.  **Install [CFITSIO](http://heasarc.gsfc.nasa.gov/fitsio/)**
+7.  **Install [CFITSIO](http://heasarc.gsfc.nasa.gov/fitsio/)**
 
     I highly recommend using pre-compiled packages, once again (on Ubuntu they are `libcfitsio-bin` and `libcfitsio-dev`), however, this is a very easy install via source.
 
-7.  **Set the `PRESTO` environment variable**
+8.  **Set the `PRESTO` environment variable**
 
     It should be set to the top level directory of the PRESTO distribution (i.e. this directory). And make sure that `$PRESTO/lib` and `$PRESTO/bin` are **not** in your `PATH` or `LD_LIBRARY_PATH` or `PYTHONPATH` environment variables as we have required in the past.
 
-8.  **Activate your Python virtual environment *or* Conda/Mamba/Anaconda environment**
+9.  **Activate your Python virtual environment *or* Conda/Mamba/Anaconda environment**
 
     * That environment should have `numpy` installed at a minimum
     * Make sure that `pip` is recent (`pip install --upgrade pip`)
     * Install the build tools: `pip install meson meson-python ninja` or `conda install meson meson-python ninja`
 
-9.  **Configure the meson build**
+10.  **Configure the meson build**
 
     In the top level PRESTO directory (i.e. `cd $PRESTO`), configure `meson` via:
 
@@ -142,13 +148,13 @@ Note that you can uninstall everything via:
 
     `meson setup build`.
 
-10. **Check your environment variables against the configuration**
+11. **Check your environment variables against the configuration**
 
     `python check_meson_build.py`
 
     If everything looks good, it will tell you. Otherwise, try fixing the issues and starting over from step #8.
 
-11. **Build and install all the C/Fortran codes and the PRESTO shared library (e.g. `libpresto.so`)**
+12. **Build and install all the C/Fortran codes and the PRESTO shared library (e.g. `libpresto.so`)**
 
     `meson compile -C build`
 
@@ -156,11 +162,11 @@ Note that you can uninstall everything via:
 
     There should be logs in case anything goes wrong in `$PRESTO/build/meson-logs`. Note that all PRESTO compiled binaries will be installed in `{prefix}/{bindir}`, and the PRESTO shared library (likely either `libpresto.so` or `libpreso.dylib`) will be installed in `{prefix}/{libdir}` as defined by `meson`. You can see the values of `{prefix}`, `{bindir}`, and `{libdir}` using the `check_meson_build.py` script from the previous step.
 
-12. **Try running a PRESTO command like `prepfold`**
+13. **Try running a PRESTO command like `prepfold`**
 
     You should get the regular usage screen. If you get a shared library error, see the troubleshooting steps above or below.
 
-13. **Compile and install the PRESTO python codes and libraries**
+14. **Compile and install the PRESTO python codes and libraries**
 
     `cd $PRESTO/python`
 
@@ -168,7 +174,7 @@ Note that you can uninstall everything via:
 
     If you get a shared library error, see the troubleshooting steps above or below.
 
-14. **Run some basic tests**
+15. **Run some basic tests**
 
     `cd $PRESTO`
 
@@ -180,11 +186,11 @@ Note that you can uninstall everything via:
 
     Another good test is to see if you can run and fit the default profile in `pygaussfit.py`
 
-15. **Run `makewisdom` to have (slightly) fast FFTs**
+16. **Run `makewisdom` to have (slightly) fast FFTs**
 
     Just run `$PRESTO/build/src/makewisdom`. It takes about 10-20 min to run, so be patient. Note that the `fftw_wisdom.txt` file will be located in `$PRESTO/build/src`, so you will need to move it to `$PRESTO/lib` so that PRESTO can find it.
 
-16. **Go find pulsars!**
+17. **Go find pulsars!**
     
     Everything should be ready to go now, and installed (likely) in the same place as the rest of your Python virtual environment and/or Conda/Mamba/Anaconda environment.
 
@@ -236,7 +242,7 @@ Couple quick trouble-shooting tips if you are having problems compiling and runn
    - `python3-numpy`
    - `python3-pip`
    
-   And the following command should get all of them: `apt install git build-essential libfftw3-bin libfftw3-dev libgsl28 libgsl-dev pgplot5 libglib2.0-dev libcfitsio-bin libcfitsio-dev libpng-dev latex2html gfortran tcsh autoconf libx11-dev python3-dev python3-numpy python3-pip`
+   And the following command should get all of them: `apt install git build-essential libfftw3-bin libfftw3-dev libgsl28 libgsl-dev liberfa-dev pgplot5 libglib2.0-dev libcfitsio-bin libcfitsio-dev libpng-dev latex2html gfortran tcsh autoconf libx11-dev python3-dev python3-numpy python3-pip`
 
 3. After the Python modules are built and installed, and you run `python tests/test_presto_python.py`, if you get a memory error, please contact Scott! I think that these issues are fixed, but if they are not, we will need to change the build process a tiny bit with a special variable define.
    

@@ -666,7 +666,8 @@ def get_baryv(ra, dec, mjd, T, obs="PK"):
       during an observation from 'obs'.  The RA and DEC are in the
       standard string format (i.e. 'hh:mm:ss.ssss' and 'dd:mm:ss.ssss').
       'T' is in sec and 'mjd' is (of course) in MJD.  The obs variable
-      is the standard two character string from TEMPO:  PK, GB, AO, GM, JB, ...
+      is the standard two character ITOA string:  PK, GB, AO, GM, JB, ...
+      (see src/observatories.c)
     """
     tts = np.linspace(mjd, mjd + T / 86400.0, 100)
     nn = len(tts)

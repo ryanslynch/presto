@@ -1,3 +1,42 @@
+## Development (unreleased, since v5.3.1):
+ * Barycentering no longer uses TEMPO!  `barycenter()` is now computed in-process
+   with the [ERFA](https://github.com/liberfa/erfa) library (a new build requirement,
+   downloaded and built automatically by meson if not installed), using ERFA's
+   built-in analytical ephemeris, leap seconds, and a new internal observatory
+   table (`src/observatories.c`).  Agreement with the old TEMPO-based code is at
+   the ~10 microsec level (absolute; the ephemeris difference) and ~1 microsec
+   differentially across an observation, with v/c matching to ~3e-9.  The `ephem`
+   argument (e.g. "DE405") is now ignored.  The old implementation is retained as
+   `barycenter_tempo()` for validation (see `src/check_bary_erfa.c` and
+   `tests/test_barycenter.py`).  TEMPO is still used for polycos.
+ * New program `prepfold_multi`: fold many candidates from a single raw-data pass
+   (reads/dedisperses once, folds all candidates, OpenMP-parallelized), built on a
+   large refactor of the prepfold internals into a shared pipeline
+   (`prepfold_pipeline.c`).  Thanks to Ryan Lynch for the initial refactor work!
+ * The compiled code is now completely Fortran-free:
+   * FFTFIT was rewritten in pure Python (NumPy/SciPy), with two selectable methods:
+     the faithful `classic` port (default) and Anne Archibald's independent
+     `aarchiba` algorithm (`get_TOAs.py -A/--fftfit {classic,aarchiba}`).  Validated
+     against a frozen golden dataset from the original Fortran.
+   * The vendored LAPACK `dgels` least-squares solver used by `bary2topo()` was
+     replaced with GSL (`gsl_multifit_linear`), and `fminbr.c` with GSL's Brent
+     minimizer.
+ * Command-line parsing specs (`clig/*.cli`) are now processed with the new `pyclig`
+   generator (the old `clig` is unmaintained); removed generated man pages.
+ * Improved accuracy of chi-squared CDF / significance calculations via better
+   transitions to asymptotic expansions in `chi2_logp()`.
+ * Fixed `stacksearch.py` FFT-stacking bugs (FFTs shorter/longer than the stack) and
+   added a simple sifting script for its outputs over multiple DMs.
+ * Fixed prepdata/prepsubband output length when using `-start`/`-offset` without
+   `-numout`, fixed the Geocenter observatory code for polycos (issue #221), and
+   fixed several pre-existing prepfold memory leaks.
+ * The prepfold regression-test suite moved to `tests/prepfold/` with a
+   tolerance-based `.bestprof` comparator.
+ * Many compiler warnings fixed (thanks Erum Vohra!), plus workarounds for spurious
+   gcc 8.5 / gcc 14 warnings; updated Dockerfiles (thanks Wenke Xia!); removed the
+   long-stale Travis CI setup.
+ * Added `CLAUDE.md` and `ROADMAP.md` describing the codebase and development plans.
+
 ## Version 5.3.1:
  * Turned on OpenMP linking for rfifind! Oops.
 

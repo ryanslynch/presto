@@ -33,3 +33,6 @@ tests/prepfold/multi_output.txt
 tests/prepfold/__pycache__
 agent_instructions/
 AGENTS.md
+subprojects/erfa-2.0.1/
+subprojects/packagecache/
+subprojects/.wraplock

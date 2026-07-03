@@ -54,8 +54,8 @@ python python/fftfit_src/test_fftfit.py
 ```
 
 `tests/` also holds pytest-style Python tests (`test_*.py`, e.g. `test_binary_calcs.py`,
-`test_max_rzw_harmonics.py`) and legacy C test programs with `.mak` makefiles. CI (`.travis/`)
-builds Docker images per target (`py3`, `pep8`, `mypy`).
+`test_max_rzw_harmonics.py`) and legacy C test programs with `.mak` makefiles. There is
+currently no CI (the stale Travis setup was removed; see ROADMAP.md).
 
 ## Architecture
 
@@ -70,8 +70,9 @@ builds Docker images per target (`py3`, `pep8`, `mypy`).
   `PLOT2DOBJS` (PGPLOT helpers).
 - `install: false` on utility/experimental executables that are built but not installed.
 
-Key external dependencies: **FFTW3 single-precision** (`fftw3f` — the `f` matters), GSL, glib-2.0,
-cfitsio, PGPLOT/cpgplot, X11, libpng, and optional OpenMP and MPI (MPI gates `mpiprepsubband`).
+Key external dependencies: **FFTW3 single-precision** (`fftw3f` — the `f` matters), GSL, **ERFA**
+(barycentering — no TEMPO needed), glib-2.0, cfitsio, PGPLOT/cpgplot, X11, libpng, and optional
+OpenMP and MPI (MPI gates `mpiprepsubband`).
 
 ### Command-line parsing is generated (`clig/` → `src/*_cmd.c`)
 

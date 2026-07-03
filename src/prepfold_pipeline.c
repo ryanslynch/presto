@@ -447,7 +447,7 @@ void compute_obs_timing(Cmdline *cmd, struct spectra_info *s, infodata *idata,
 
     if (RAWDATA || insubs) {
 
-        // Identify the TEMPO observatory code
+        // Identify the observatory code
         search->telescope = (char *) calloc(40, sizeof(char));
         telescope_to_tempocode(idata->telescope, search->telescope, obs);
 
@@ -880,7 +880,7 @@ void setup_orbit_delays(Cmdline *cmd, infodata *idata, foldcand *fc,
         /* Save the orbital solution every half second               */
         /* The times in *tp are now calculated as barycentric times. */
         /* Later, we will change them to topocentric times after     */
-        /* applying corrections to Ep using TEMPO.                   */
+        /* applying barycentric corrections to Ep.                   */
 
         startE = keplers_eqn(search->orb.t, search->orb.p, search->orb.e, 1.0E-15);
         if (T > 2048)
@@ -1186,7 +1186,7 @@ void fold_events(Cmdline *cmd, infodata *idata, foldcand *fc, double T,
 /* Phase 10: generate the topocentric<->barycentric corrections and convert */
 /* the barycentric fold params to topocentric ones (called by fold_timeseries). */
 /* Shared, candidate-INDEPENDENT half of the barycentering: build the topo<->  */
-/* bary time tables and the average Earth velocity with one TEMPO barycenter()  */
+/* bary time tables and the average Earth velocity with one barycenter() call. */
 /* call.  Depends only on the folding epoch, obs length, sky position and       */
 /* ephemeris -- so prepfold_multi computes it ONCE for all candidates.          */
 void compute_bary_table(double tepoch, double T, char *rastring, char *decstring,
@@ -1198,7 +1198,7 @@ void compute_bary_table(double tepoch, double T, char *rastring, char *decstring
     int numbarypts;
     long ii;
 
-    /* The number of topo to bary points to generate with TEMPO */
+    /* The number of topo to bary points to generate */
 
     numbarypts = T / TDT + 10;
     barytimes = gen_dvect(numbarypts);
@@ -1210,7 +1210,7 @@ void compute_bary_table(double tepoch, double T, char *rastring, char *decstring
     for (ii = 0; ii < numbarypts; ii++)
         topotimes[ii] = tepoch + (double) ii *TDT / SECPERDAY;
 
-    /* Call TEMPO for the barycentering */
+    /* Barycenter with ERFA */
 
     printf("\nGenerating barycentric corrections...\n");
     barycenter(topotimes, barytimes, voverc, numbarypts,
@@ -1232,7 +1232,7 @@ void compute_bary_table(double tepoch, double T, char *rastring, char *decstring
 
 /* Per-candidate half of the barycentering: using the shared tables, convert    */
 /* this candidate's barycentric fold params to topocentric (bary2topo) and      */
-/* re-reference its binary delay times.  Cheap (no TEMPO call).                  */
+/* re-reference its binary delay times.  Cheap (no barycenter() call).           */
 void apply_bary_fold_correction(foldcand *fc, int numbarypts,
                                 double *barytimes, double *topotimes)
 {

@@ -305,10 +305,10 @@ int main(int argc, char *argv[])
         delay_from_dm(maxdm, idata.freq + (idata.num_chan - 1) * idata.chan_wid);
     blocksperread = ((int) (BW_ddelay / idata.dt) / s.spectra_per_subint + 1);
     worklen = s.spectra_per_subint * blocksperread;
-    /* The number of topo to bary time points to generate with TEMPO */
+    /* The number of topo to bary time points to generate */
     numbarypts = (int) (s.T * 1.1 / TDT + 5.5) + 1;
 
-    // Identify the TEMPO observatory code
+    // Identify the observatory code
     {
         char *outscope = (char *) calloc(40, sizeof(char));
         telescope_to_tempocode(idata.telescope, outscope, obs);
@@ -463,7 +463,7 @@ int main(int argc, char *argv[])
         for (ii = 0; ii < numbarypts; ii++)
             ttoa[ii] = tlotoa + TDT * ii / SECPERDAY;
 
-        /* Call TEMPO for the barycentering */
+        /* Barycenter with ERFA */
 
         printf("\nGenerating barycentric corrections...\n");
         barycenter(ttoa, btoa, voverc, numbarypts, rastring, decstring, obs, ephem);

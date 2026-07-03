@@ -1360,22 +1360,38 @@ double doppler(double freq_observed, double voverc);
 void barycenter(double *topotimes, double *barytimes, \
 		double *voverc, long N, char *ra, char *dec, \
 		char *obs, char *ephem);
-  /* This routine uses TEMPO to correct a vector of           */
-  /* topocentric times (in *topotimes) to barycentric times   */
-  /* (in *barytimes) assuming an infinite observation         */
+  /* This routine uses the ERFA library to correct a vector   */
+  /* of topocentric times (in *topotimes) to barycentric      */
+  /* times (in *barytimes) assuming an infinite observation   */
   /* frequency.  The routine also returns values for the      */
   /* radial velocity of the observation site (in units of     */
   /* v/c) at the barycentric times.  All three vectors must   */
   /* be initialized prior to calling.  The vector length for  */
-  /* all the vectors is 'N' points.  The RA and DEC (J2000)   */
-  /* of the observed object are passed as strings in the      */
-  /* following format: "hh:mm:ss.ssss" for RA and             */
-  /* "dd:mm:s.ssss" for DEC.  The observatory site is passed  */
-  /* as a 2 letter ITOA code.  This observatory code must be  */
-  /* found in obsys.dat (in the TEMPO paths).  The ephemeris  */
-  /* found in obsys.dat (in the TEMPO paths).  The ephemeris  */
-  /* is the full name of an ephemeris supported by TEMPO,     */
-  /* examples include DE200, DE421, or DE436.                 */
+  /* all the vectors is 'N' points.  The topocentric times    */
+  /* must be UTC MJDs; the returned barycentric times are     */
+  /* TDB MJDs.  The RA and DEC (J2000) of the observed        */
+  /* object are passed as strings in the following format:    */
+  /* "hh:mm:ss.ssss" for RA and "dd:mm:ss.ssss" for DEC.      */
+  /* The observatory site is passed as a 2 letter ITOA code   */
+  /* (see observatories.c).  The ephemeris argument is        */
+  /* accepted for backwards compatibility but is ignored.     */
+
+void barycenter_tempo(double *topotimes, double *barytimes, \
+		double *voverc, long N, char *ra, char *dec, \
+		char *obs, char *ephem);
+  /* The original TEMPO-based version of barycenter(), with   */
+  /* the identical calling convention.  It requires the       */
+  /* external 'tempo' executable (with the observatory in     */
+  /* obsys.dat, and ephem set to an ephemeris TEMPO supports, */
+  /* e.g. DE405 or DE421) and is retained only for            */
+  /* validating the ERFA implementation against it.           */
+
+int obs_coords(const char *itoacode, double xyz[3], char *obsname);
+  /* Look up the geocentric ITRF coordinates (m) of an        */
+  /* observatory given its 2-letter ITOA code ("0" means the  */
+  /* geocenter).  If obsname is non-NULL the familiar name    */
+  /* (< 32 chars) is copied into it.  Returns 1 on success,   */
+  /* 0 for an unknown code.  See observatories.c.             */
 
 fftcand *search_fft(fcomplex *fft, int numfft, int lobin, int hibin, 
 		    int numharmsum, int numbetween, 

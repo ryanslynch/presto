@@ -182,18 +182,15 @@ ang = presto.sphere_ang_diff(
 assert round(160334.960 * presto.ARCSEC2RAD - ang, 7) == 0
 print("success")
 
-# Only run this test if TEMPO is available
-envval = os.getenv("TEMPO")
-if envval is not None:
-    print("Testing get_baryv (barycenter)...", end=" ")
-    vavg1 = presto.get_baryv(
-        "18:24:32.9520", "-24:52:12.0000", 56421.44222222222222, 214.5386496, obs="GB"
-    )
-    vavg2 = -7.2069293455783169e-05
-    assert round(vavg1 - vavg2, 10) == 0
-    print("success")
-else:
-    print("Skipping test of presto.get_baryv() since TEMPO not set.")
+print("Testing get_baryv (barycenter)...", end=" ")
+vavg1 = presto.get_baryv(
+    "18:24:32.9520", "-24:52:12.0000", 56421.44222222222222, 214.5386496, obs="GB"
+)
+# The reference value is from the old TEMPO-based barycenter(); the
+# ERFA-based version agrees with it to ~1e-9 in v/c (ephemeris difference)
+vavg2 = -7.2069293455783169e-05
+assert abs(vavg1 - vavg2) < 5e-9
+print("success")
 
 print("Testing simple folding code...", end=" ")
 prof, phs = presto.fold(np.ones(10000), 0.001, 10, 1)

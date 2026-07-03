@@ -39,12 +39,13 @@ libpresto = library(
     'fftcalls.c', 'fitsfile.c', 'fold.c', 'fresnl.c',
     'get_candidates.c', 'hget.c', 'hput.c', 'imio.c', 'ioinf.c',
     'iomak.c', 'mask.c', 'maximize_r.c', 'maximize_rz.c',
-    'maximize_rzw.c', 'median.c', 'minifft.c', 'misc_utils.c', 'orbint.c',
+    'maximize_rzw.c', 'median.c', 'minifft.c', 'misc_utils.c',
+    'observatories.c', 'orbint.c',
     'output.c', 'range_parse.c', 'read_fft.c', 'readpar.c', 'responses.c',
     'rzinterp.c', 'rzwinterp.c', 'select.c', 'sorter.c', 'swapendian.c',
     'transpose.c', 'twopass.c', 'twopass_real_fwd.c',
     'twopass_real_inv.c', 'vectors.c',
-    dependencies: [glib, fftw, gsl, libm],
+    dependencies: [glib, fftw, gsl, erfa, libm],
     include_directories: inc,
     install: true
 )
@@ -62,6 +63,9 @@ executable('bary', 'bary.c',
 executable('bincand', 'bincand.c', 'bincand_cmd.c',
     dependencies: [glib, fftw, gsl, libm, omp],
     include_directories: inc, link_with: libpresto, install: true)
+
+executable('check_bary_erfa', 'check_bary_erfa.c',
+    dependencies: [fftw, gsl, libm], include_directories: inc, link_with: libpresto, install: false)
 
 executable('check_parkes_raw', 'check_parkes_raw.c', 'multibeam.c',
     dependencies: [fftw, gsl, libm], include_directories: inc, link_with: libpresto, install: true)
