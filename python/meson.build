@@ -28,8 +28,40 @@ png = dependency('libpng')
 
 libm = cc.find_library('m', required: false)
 libpresto = cc.find_library('presto', required: true)
-pgplot = cc.find_library('pgplot', required: true)
-cpgplot = cc.find_library('cpgplot', required: true)
+# PGPLOT: prefer pkg-config, fall back to a bare library search, and make
+# sure cpgplot.h is actually reachable (it is in <includedir>/pgplot for
+# conda-forge's pgplot package, and in $PGPLOT_DIR for classic source
+# installs).  This mirrors the identical logic in the top-level meson.build.
+pgplot = dependency('pgplot', required: false)
+if not pgplot.found()
+  pgplot = cc.find_library('pgplot', required: true)
+endif
+cpgplot = dependency('cpgplot', required: false)
+if not cpgplot.found()
+  cpgplot = cc.find_library('cpgplot', required: true)
+endif
+if not cc.has_header('cpgplot.h', dependencies: cpgplot)
+  fs = import('fs')
+  pg_hdr_cands = []
+  if cpgplot.type_name() == 'pkgconfig'
+    pg_hdr_cands += cpgplot.get_variable(pkgconfig: 'includedir') / 'pgplot'
+  endif
+  pg_env = run_command('sh', '-c', 'printf %s "$PGPLOT_DIR"', check: false).stdout()
+  if pg_env != ''
+    pg_hdr_cands += pg_env
+  endif
+  pg_hdr_found = false
+  foreach dir : pg_hdr_cands
+    if not pg_hdr_found and fs.exists(dir / 'cpgplot.h')
+      cpgplot = declare_dependency(dependencies: cpgplot,
+                                   compile_args: '-I' + dir)
+      pg_hdr_found = true
+    endif
+  endforeach
+  if not pg_hdr_found
+    error('Cannot find cpgplot.h -- install PGPLOT dev files or set PGPLOT_DIR.')
+  endif
+endif
 
 inc = include_directories('../include')
 

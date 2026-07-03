@@ -38,6 +38,10 @@ cd python && pip install .
 the effective `{prefix}`, `{bindir}`, `{libdir}` and flags common environment mistakes. Build
 logs are in `build/meson-logs/`. Many compiler warnings are expected and benign.
 
+Alternatively, `pixi run build` drives both stages inside a self-contained pixi environment
+(toolchain + deps from conda-forge; see `pixi.toml`). It uses its own `build-pixi/` directory
+and installs into `.pixi/envs/default`, so it never touches a manually managed `build/`.
+
 Uninstall: `ninja uninstall -C build` and `pip uninstall presto`.
 
 `makewisdom` (built to `build/src/`, not installed) generates `fftw_wisdom.txt`; move it to

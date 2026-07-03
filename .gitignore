@@ -19,7 +19,7 @@ dist/
 .hypothesis/
 .pytest_cache/
 .vscode/
-build/
+build*/
 examplescripts/ppdot_*.png
 tests/prepfold/*pfd*
 tests/prepfold/Ter5*inf
@@ -36,3 +36,4 @@ AGENTS.md
 subprojects/erfa-2.0.1/
 subprojects/packagecache/
 subprojects/.wraplock
+.pixi/

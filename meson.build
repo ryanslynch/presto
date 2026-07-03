@@ -30,8 +30,45 @@ mpi = dependency('mpi', language: 'c', required: false,
   not_found_message: 'MPI not found. Skipping mpiprepsubband build.')
 
 libm = cc.find_library('m', required: false)
-pgplot = cc.find_library('pgplot', required: true)
-cpgplot = cc.find_library('cpgplot', required: true)
+# PGPLOT: prefer pkg-config (e.g. conda-forge's pgplot ships .pc files);
+# fall back to a bare library search for distros without them (e.g.
+# Ubuntu's pgplot5)
+pgplot = dependency('pgplot', required: false)
+if not pgplot.found()
+  pgplot = cc.find_library('pgplot', required: true)
+endif
+cpgplot = dependency('cpgplot', required: false)
+if not cpgplot.found()
+  cpgplot = cc.find_library('cpgplot', required: true)
+endif
+# Make sure cpgplot.h is actually reachable: it is in the default include
+# path on e.g. Ubuntu, but in <includedir>/pgplot for conda-forge's pgplot
+# (whose .pc file does not say so), and in $PGPLOT_DIR for classic source
+# installs
+if not cc.has_header('cpgplot.h', dependencies: cpgplot)
+  fs = import('fs')
+  pg_hdr_cands = []
+  if cpgplot.type_name() == 'pkgconfig'
+    pg_hdr_cands += cpgplot.get_variable(pkgconfig: 'includedir') / 'pgplot'
+  endif
+  pg_env = run_command('sh', '-c', 'printf %s "$PGPLOT_DIR"', check: false).stdout()
+  if pg_env != ''
+    pg_hdr_cands += pg_env
+  endif
+  pg_hdr_found = false
+  foreach dir : pg_hdr_cands
+    # A raw -I (not include_directories) since e.g. a pixi env lives
+    # inside the source tree, which include_directories() refuses
+    if not pg_hdr_found and fs.exists(dir / 'cpgplot.h')
+      cpgplot = declare_dependency(dependencies: cpgplot,
+                                   compile_args: '-I' + dir)
+      pg_hdr_found = true
+    endif
+  endforeach
+  if not pg_hdr_found
+    error('Cannot find cpgplot.h -- install PGPLOT dev files or set PGPLOT_DIR.')
+  endif
+endif
 
 inc = include_directories('include')
 

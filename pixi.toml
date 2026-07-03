@@ -1,0 +1,69 @@
+# Pixi workspace for building and developing PRESTO.
+#
+# Quickstart:
+#     pixi run build        # full build: C code + libpresto + Python package
+#     pixi run test         # quick smoke tests
+#     pixi shell            # drop into the environment (prepfold, python, etc.)
+#
+# The C code installs into the pixi environment prefix (.pixi/envs/default),
+# and the Python package is installed there with uv.  Use
+# `pixi run install-py-editable` instead of the normal build if you want live
+# editing of the pure-Python modules while debugging.
+#
+# Notes:
+#  - ERFA is not on conda-forge; the meson subproject fallback builds it
+#    automatically (see subprojects/erfa.wrap).
+#  - TEMPO is not on conda-forge either.  It is only needed for polycos
+#    (e.g. prepfold -timing): build it separately and set $TEMPO.
+
+[workspace]
+name = "presto"
+channels = ["conda-forge"]
+platforms = ["linux-64", "osx-arm64", "osx-64"]
+
+[dependencies]
+python = ">=3.10"
+c-compiler = "*"
+meson = ">=1.3"
+ninja = "*"
+pkg-config = "*"
+uv = "*"
+numpy = "*"
+scipy = "*"
+astropy = "*"
+matplotlib = "*"
+pytest = "*"
+fftw = "*"
+gsl = "*"
+cfitsio = "*"
+glib = "*"
+libpng = "*"
+xorg-libx11 = "*"
+pgplot = "*"
+
+[activation.env]
+PRESTO = "$PIXI_PROJECT_ROOT"
+PGPLOT_DIR = "$CONDA_PREFIX/share/pgplot"
+# So the Python-package build can link against the installed libpresto
+LIBRARY_PATH = "$CONDA_PREFIX/lib"
+
+# The pixi tasks use their own build directory (build-pixi) so they never
+# interfere with a manually managed meson `build` directory.
+[tasks]
+configure = { cmd = """
+test -f build-pixi/meson-private/coredata.dat \
+  && meson setup --reconfigure build-pixi --prefix=$CONDA_PREFIX --libdir=lib \
+  || meson setup build-pixi --prefix=$CONDA_PREFIX --libdir=lib
+""" }
+build-c = { cmd = "meson compile -C build-pixi", depends-on = ["configure"] }
+install-c = { cmd = "meson install -C build-pixi", depends-on = ["build-c"] }
+install-py = { cmd = "uv pip install --python=$CONDA_PREFIX/bin/python ./python", depends-on = [
+    "install-c",
+] }
+install-py-editable = { cmd = "uv pip install --python=$CONDA_PREFIX/bin/python -e ./python", depends-on = [
+    "install-c",
+] }
+build = { depends-on = ["install-py"] }
+test = { cmd = "pytest tests/test_barycenter.py && python tests/test_presto_python.py", depends-on = [
+    "build",
+] }

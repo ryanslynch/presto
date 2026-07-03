@@ -1,5 +1,22 @@
 # New and improved steps to install PRESTO!
 
+## Easiest route: build with [pixi](https://pixi.sh)
+
+If you use pixi, the repo now has a `pixi.toml` workspace that provides the
+entire toolchain and all build dependencies from conda-forge and drives the
+full build:
+
+    pixi run build     # C code + libpresto + Python package, installed into the pixi env
+    pixi run test      # quick smoke tests
+    pixi shell         # drop into the environment (prepfold, python, etc. on PATH)
+
+Use `pixi run install-py-editable` after building if you want live-editable
+pure-Python modules while debugging. The pixi tasks use their own meson build
+directory (`build-pixi/`), so they will not interfere with a manually managed
+`build/`. Notes: ERFA is built automatically (it is not on conda-forge), and
+TEMPO (needed only for polycos) must still be built separately with `$TEMPO`
+set.
+
 ## td;dr for experienced PRESTO builders:
 With v5, we have switched to building and installing with [meson](https://mesonbuild.com/).
 
