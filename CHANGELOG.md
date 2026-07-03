@@ -32,7 +32,15 @@
      replaced with GSL (`gsl_multifit_linear`), and `fminbr.c` with GSL's Brent
      minimizer.
  * Command-line parsing specs (`clig/*.cli`) are now processed with the new `pyclig`
-   generator (the old `clig` is unmaintained); removed generated man pages.
+   generator (the old `clig` is unmaintained); removed the copies of old
+   clig-generated man pages which lived in the `clig` directory.
+ * Filled in `Description`/`Author`/`SeeAlso` content for the `clig/*.cli` files, so
+   `man <tool>` is now real documentation instead of pyclig's placeholder text, with
+   usage examples for the main routines (`rfifind`, `prepdata`, `prepsubband`,
+   `mpiprepsubband`, `accelsearch`, `realfft`, `show_pfd`, `prepfold`). All CLIG-based
+   files were regenerated except `prepfold_multi`, which keeps its existing
+   hand-written man page. Removed the unused `dftfold` program, and copied
+   `prepfold_multi`'s `-candfile` format into a new `FAQ.md` entry for discoverability.
  * Improved accuracy of chi-squared CDF / significance calculations via better
    transitions to asymptotic expansions in `chi2_logp()`.
  * Fixed `stacksearch.py` FFT-stacking bugs (FFTs shorter/longer than the stack) and
