@@ -28,6 +28,17 @@ void mjd_to_datestr(double mjd, char *datestr);
 int gcd(int a, int b);
 /* Return the greatest common divisor of a and b */
 
+char *presto_data_path(const char *filename);
+/* Return a malloc'd absolute path to a PRESTO runtime data file (e.g.       */
+/* "pulsars.cat").  Searches $PRESTO/lib, the compiled-in install datadir    */
+/* <prefix>/share/presto, and a datadir derived from the running            */
+/* executable, returning the first that exists.  The caller must free() it.  */
+
+char *presto_data_writepath(const char *filename);
+/* Return a malloc'd absolute path naming where a PRESTO data file should be  */
+/* written: $PRESTO/lib if set, else the compiled-in <prefix>/share/presto.   */
+/* The caller must free() the result.                                        */
+
 char *rmtrail(char *str);
 /* Removes trailing space from a string */
  

@@ -1,5 +1,5 @@
 py3.install_sources(
-  ['barycenter.py', 'bestprof.py', 'binary_psr.py', 'cosine_rand.py',
+  ['_datadir.py', 'barycenter.py', 'bestprof.py', 'binary_psr.py', 'cosine_rand.py',
   'cosine_rand.json', 'events.py', 'fftfit.py', 'fftfit_aarchiba.py',
   'filterbank.py', 'harmonic_sum.py',
   'infodata.py', 'injectpsr.py', 'kuiper.py', 'mpfit.py', 'parfile.py', 'Pgplot.py',

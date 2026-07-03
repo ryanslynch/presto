@@ -34,13 +34,14 @@ int read_database(void)
 /* Reads the full pulsar database into the static array psrdata */
 {
     FILE *database;
-    char databasenm[200];
+    char *databasenm;
     psrdata pdata;
     binpsrdata bpdata;
 
     /* Open the binary data file */
-    sprintf(databasenm, "%s/lib/pulsars.cat", getenv("PRESTO"));
+    databasenm = presto_data_path("pulsars.cat");
     database = chkfopen(databasenm, "rb");
+    free(databasenm);
 
     while (chkfread(&pdata, sizeof(psrdata), 1, database)) {
         if (np >= NP) {

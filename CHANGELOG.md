@@ -1,4 +1,15 @@
 ## Development (unreleased, since v5.3.1):
+ * **PRESTO no longer requires the `PRESTO` environment variable to be set** — a big
+   change after ~26 years!  Shared runtime data (the pulsar catalog `pulsars.cat`,
+   `psr_catalog.txt`, and `aliases.txt`) is now installed to `{prefix}/share/presto`,
+   and both the C tools and the Python package locate it with the same search order:
+   `$PRESTO/lib` (still honored as an optional override, e.g. for running from a
+   source tree) -> the compiled-in `{prefix}/share/presto` -> a path derived from the
+   running executable/module (so relocated conda/pixi environments still work).  This
+   is implemented via `presto_data_path()` in the new `src/datadir.c` and
+   `data_path()` in the new `python/presto/_datadir.py`.  The man pages (`docs/*.1`)
+   now install to `{prefix}/share/man/man1`, so `man rfifind` (etc.) works with no
+   extra setup (conda activation already puts that on `MANPATH`).
  * Polyco generation (e.g. `prepfold -timing`) now uses **tempo2** (which is on
    conda-forge) rather than TEMPO, via `tempo2 -tempo1 -polyco`, which writes
    TEMPO1-format polycos.  Together with the ERFA barycentering below, **PRESTO no

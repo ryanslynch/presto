@@ -35,7 +35,7 @@ libpresto = library(
     'presto', 'amoeba.c', 'atwood.c', 'barycenter.c', 'birdzap.c',
     'cand_output.c', 'characteristics.c', 'chkio.c', 'cldj.c',
     'clipping.c', 'corr_prep.c', 'corr_routines.c', 'correlations.c',
-    'database.c', 'dispersion.c', 'djcl.c', 'fastffts.c',
+    'database.c', 'datadir.c', 'dispersion.c', 'djcl.c', 'fastffts.c',
     'fftcalls.c', 'fitsfile.c', 'fold.c', 'fresnl.c',
     'get_candidates.c', 'hget.c', 'hput.c', 'imio.c', 'ioinf.c',
     'iomak.c', 'mask.c', 'maximize_r.c', 'maximize_rz.c',

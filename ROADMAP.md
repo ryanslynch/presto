@@ -27,6 +27,17 @@ Stop requiring `PRESTO` (and other) environment variables to be set. These curre
 runtime data such as the pulsar database and the FFTW wisdom file, among other things. For a
 conda-forge package these paths need to be discoverable without user-set env vars.
 
+**[DONE]** `PRESTO` is no longer required. Shared runtime data (`pulsars.cat`,
+`psr_catalog.txt`, `aliases.txt`) now installs to `{prefix}/share/presto`, and both C and
+Python resolve it with the same search order — `$PRESTO/lib` (optional override) →
+`{prefix}/share/presto` (compiled in via `-DPRESTO_DATADIR` for C, `sys.prefix` for Python)
+→ a path derived from the running executable/module (relocation-safe). New `src/datadir.c`
+`presto_data_path()` (used by `database.c`/`fftcalls.c`) and `python/presto/_datadir.py`
+`data_path()` (used by `pypsrcat.py`) implement this; `check_meson_build.py` now treats
+`PRESTO` as optional. FFTW wisdom is machine-specific and no longer shipped (soft-warns if
+absent). Validated: catalog reads (4303 psrs) and `pypsrcat` import/regen work with `PRESTO`
+unset; `test_presto_python.py` passes unset.
+
 ### Reduce/remove the Fortran dependency
 
 - Remove Fortran from the main compiled binaries, replacing it with GSL code where possible.
@@ -185,6 +196,10 @@ new FAQ.md entry. Man page installation (next section) is still open.
 
 Discuss with Claude ways to do this seamlessly and usefully, especially once we (soon!) 
 get PRESTO into conda-forge.
+
+**[DONE]** The `docs/*.1` man pages now install to `{prefix}/share/man/man1` via
+`install_man()` in the top-level `meson.build`, so `man rfifind` (etc.) works with no
+`$PRESTO` or extra `MANPATH` setup (conda activation already adds `{prefix}/share/man`).
 
 ### Clean up old and unused code
 

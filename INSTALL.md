@@ -27,7 +27,7 @@ With v5, we have switched to building and installing with [meson](https://mesonb
 As always, there are a set of essential packages required to build PRESTO. This command should do it on a Debian/Ubuntu-like system:
 `apt install git build-essential libfftw3-bin libfftw3-dev libgsl28 libgsl-dev liberfa-dev pgplot5 libglib2.0-dev libcfitsio-bin libcfitsio-dev libpng-dev latex2html gfortran tcsh autoconf libx11-dev python3-dev python3-numpy python3-pip`
 
-Make sure that your `PRESTO` environment variable points to the top-level PRESTO git checkout. And make sure that `$PRESTO/lib` and `$PRESTO/bin` are **not** in your `PATH` or `LD_LIBRARY_PATH` or `PYTHONPATH` environment variables as we have required in the past. It is probably a good idea to clean your earlier compiles, as well. Just cd into the `src` directory and do a `make cleaner`, and then come back here.
+Setting the `PRESTO` environment variable is now **optional** — the installed tools locate their runtime data (the pulsar catalog, etc.) automatically in `{prefix}/share/presto`. It is still handy as a shorthand for the commands below (which use `$PRESTO`) and works as an override when running from an uninstalled source tree, so you may want to point it at the top-level PRESTO git checkout. Either way, make sure that `$PRESTO/lib` and `$PRESTO/bin` are **not** in your `PATH` or `LD_LIBRARY_PATH` or `PYTHONPATH` environment variables as we have required in the past. It is probably a good idea to clean your earlier compiles, as well.
 
 From your activated Python virtual or [Conda](https://docs.conda.io/) environment, make sure that you have `meson`, `meson-python`, `ninja`, and a recent `pip` installed (also Python >=3.8):
 
@@ -84,7 +84,7 @@ And that should do it! You can quickly test to see if most things are working by
 
 Another good test is to see if you can run and fit the default profile in `pygaussfit.py`
 
-If you want to run `makewisdom` for slightly faster FFT calls, it is located in `$PRESTO/build/src`. Just run it from there, and then copy or move the resulting `fftw_wisdom.txt` file to `$PRESTO/lib`.
+If you want to run `makewisdom` for slightly faster FFT calls, it is located in `$PRESTO/build/src`. Just run it from there, and then copy or move the resulting `fftw_wisdom.txt` file into `{prefix}/share/presto` (or into `$PRESTO/lib` if you have `PRESTO` set as an override). PRESTO looks for it there at runtime.
 
 Note that you can uninstall everything via:
 
@@ -137,9 +137,9 @@ Note that you can uninstall everything via:
 
     I highly recommend using pre-compiled packages, once again (on Ubuntu they are `libcfitsio-bin` and `libcfitsio-dev`), however, this is a very easy install via source.
 
-8.  **Set the `PRESTO` environment variable**
+8.  **(Optional) Set the `PRESTO` environment variable**
 
-    It should be set to the top level directory of the PRESTO distribution (i.e. this directory). And make sure that `$PRESTO/lib` and `$PRESTO/bin` are **not** in your `PATH` or `LD_LIBRARY_PATH` or `PYTHONPATH` environment variables as we have required in the past.
+    This is no longer required — the installed tools find their runtime data in `{prefix}/share/presto` on their own. Setting `PRESTO` to the top level directory of the PRESTO distribution (i.e. this directory) is still useful as a shorthand for the commands below and as an override for running from an uninstalled source tree. Whether or not you set it, make sure that `$PRESTO/lib` and `$PRESTO/bin` are **not** in your `PATH` or `LD_LIBRARY_PATH` or `PYTHONPATH` environment variables as we have required in the past.
 
 9.  **Activate your Python virtual environment *or* Conda/Mamba/Anaconda environment**
 

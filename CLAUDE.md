@@ -19,8 +19,10 @@ Planned larger changes (conda-forge packaging, dependency removal, etc.) live in
 ## Build and install
 
 The build uses **meson** (v5+ switched away from Makefiles). The two halves — C code and the
-Python package — are built and installed separately. Requires a `PRESTO` environment variable
-pointing at this top-level directory, plus `PGPLOT_DIR` (and `TEMPO2` if generating polycos;
+Python package — are built and installed separately. The `PRESTO` environment variable is now
+**optional** (installed tools find their data in `{prefix}/share/presto`; setting `PRESTO` to
+this top-level directory still works as an override for running from a source tree). Set
+`PGPLOT_DIR` (and `TEMPO2` if generating polycos;
 conda-forge's tempo2 sets it automatically). Note: `$PRESTO/bin` and
 `$PRESTO/lib` should **not** be on `PATH`/`LD_LIBRARY_PATH`/`PYTHONPATH` (unlike older versions).
 

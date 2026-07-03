@@ -1,4 +1,5 @@
 #include "ransomfft.h"
+#include "misc_utils.h"
 #include "stdint.h"
 #include "string.h"
 #include <errno.h>
@@ -12,23 +13,24 @@
 void read_wisdom(void)
 {
     FILE *wisdomfile;
-    static char wisdomfilenm[120];
+    char *wisdomfilenm;
 
     /* First try to import the system wisdom if available */
     fftwf_import_system_wisdom();
-    sprintf(wisdomfilenm, "%s/lib/fftw_wisdom.txt", getenv("PRESTO"));
+    wisdomfilenm = presto_data_path("fftw_wisdom.txt");
     wisdomfile = fopen(wisdomfilenm, "r");
     if (wisdomfile == NULL) {
         printf("Warning:  Couldn't open '%s'\n"
-               "          You should run 'makewisdom'.  See $PRESTO/INSTALL.\n",
+               "          You should run 'makewisdom'.  See INSTALL.md.\n",
                wisdomfilenm);
     } else {
         if (!fftwf_import_wisdom_from_file(wisdomfile))
             printf("Warning:  '%s' is not up-to-date.\n"
-                   "          You should run 'makewisdom'.  See $PRESTO/INSTALL.\n",
+                   "          You should run 'makewisdom'.  See INSTALL.md.\n",
                    wisdomfilenm);
         fclose(wisdomfile);
     }
+    free(wisdomfilenm);
     // The following resets errno if one of the wisdom files was not found
     errno = 0;
 }

@@ -11,6 +11,7 @@ from presto import presto
 import presto.psr_utils as pu
 import presto.psr_constants as pc
 import presto.parfile as pp
+from presto._datadir import data_path
 
 ## The most recent catalogs are available here:
 ## 
@@ -280,8 +281,7 @@ pulsars = {}
 num_binaries = 0
 
 # Read the file that was taken from the ATNF database
-presto_path = os.getenv("PRESTO")
-with open(os.path.join(presto_path, "lib", "psr_catalog.txt")) as csvfile:
+with open(data_path("psr_catalog.txt")) as csvfile:
     reader = csv.reader(csvfile, delimiter=';')
     first = next(reader)
     indices = {}
@@ -299,7 +299,7 @@ with open(os.path.join(presto_path, "lib", "psr_catalog.txt")) as csvfile:
             sys.exit()
 
 # Now add the aliases to the pulsars
-infile = open(os.path.join(presto_path, "lib", "aliases.txt"))
+infile = open(data_path("aliases.txt"))
 for line in infile.readlines()[1:]:
     if line[0]=='J':
         vals = line.split()
@@ -354,8 +354,10 @@ def add_psr_from_parfile(parfile):
 
 # If calling this as a main program, then write out the new pulsars.cat file
 if __name__ == '__main__' :
-    presto_path = os.getenv("PRESTO")
-    outfilename = os.path.join(presto_path, "lib", "pulsars.cat")
+    # Write the binary catalog alongside the text source it was built from
+    # (i.e. into the same share/presto or $PRESTO/lib directory).
+    outfilename = os.path.join(os.path.dirname(data_path("psr_catalog.txt")),
+                               "pulsars.cat")
     outfile = open(outfilename, "wb")
     print("Writing %d pulsars (%d binaries) to %s" % \
           (len(psrs), num_binaries, outfilename))

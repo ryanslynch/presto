@@ -59,12 +59,15 @@ print(
 )
 presto = os.environ.get("PRESTO")
 if presto is None:
+    print(f"  {bcolors.OKBLUE}no (optional){bcolors.ENDC}")
     print(
-        f"\n  {bcolors.WARNING}WARNING:{bcolors.ENDC} PRESTO environment variable is not set!"
+        "  PRESTO is no longer required: the installed tools find their data in"
     )
-    print("  You can set it using something like:")
+    print(
+        "  <prefix>/share/presto.  Setting it (to this source directory) still"
+    )
+    print("  works as an override, e.g. for running from an uninstalled tree:")
     print(f"  export PRESTO={os.getcwd()}")
-    bail()
 else:
     print(f"  {bcolors.OKGREEN}yes{bcolors.ENDC}")
     if os.getcwd() != os.path.realpath(presto):
@@ -88,33 +91,35 @@ if tempo2 is None:
 else:
     print(f"  {bcolors.OKGREEN}yes{bcolors.ENDC}")
 
-chk = os.path.join(presto, "bin")
 path = os.environ.get("PATH")
 path = path.split(":") if path is not None else []
 path = [x.rstrip("/") for x in path]
-if chk != bininstall:
-    print("Is $PRESTO/bin in PATH? (it shouldn't be):", end="")
-    if chk in path:
-        print(f"  {bcolors.FAIL}yes{bcolors.ENDC}")
-        print(
-            f"\n  {bcolors.WARNING}WARNING:{bcolors.ENDC} $PRESTO/bin should probably not be in your PATH!"
-        )
-        bail()
-    else:
-        print(f"  {bcolors.OKGREEN}no{bcolors.ENDC}")
-
 dlpath = "DYLD_LIBRARY_PATH" if platform.system() == "Darwin" else "LD_LIBRARY_PATH"
-chk = os.path.join(presto, "lib")
-if chk != libinstall:
-    print(f"Is $PRESTO/lib in {dlpath}? (it shouldn't be):", end="")
-    if chk in path:
-        print(f"  {bcolors.FAIL}yes{bcolors.ENDC}")
-        print(
-            f"\n  {bcolors.WARNING}WARNING:{bcolors.ENDC} $PRESTO/lib should probably not be in your {dlpath}!"
-        )
-        bail()
-    else:
-        print(f"  {bcolors.OKGREEN}no{bcolors.ENDC}")
+# These sanity checks only apply when PRESTO is set as an override
+if presto is not None:
+    chk = os.path.join(presto, "bin")
+    if chk != bininstall:
+        print("Is $PRESTO/bin in PATH? (it shouldn't be):", end="")
+        if chk in path:
+            print(f"  {bcolors.FAIL}yes{bcolors.ENDC}")
+            print(
+                f"\n  {bcolors.WARNING}WARNING:{bcolors.ENDC} $PRESTO/bin should probably not be in your PATH!"
+            )
+            bail()
+        else:
+            print(f"  {bcolors.OKGREEN}no{bcolors.ENDC}")
+
+    chk = os.path.join(presto, "lib")
+    if chk != libinstall:
+        print(f"Is $PRESTO/lib in {dlpath}? (it shouldn't be):", end="")
+        if chk in path:
+            print(f"  {bcolors.FAIL}yes{bcolors.ENDC}")
+            print(
+                f"\n  {bcolors.WARNING}WARNING:{bcolors.ENDC} $PRESTO/lib should probably not be in your {dlpath}!"
+            )
+            bail()
+        else:
+            print(f"  {bcolors.OKGREEN}no{bcolors.ENDC}")
 
 print(f"Is {bcolors.BOLD}{bininstall}{bcolors.ENDC} in PATH? (it should be):", end="")
 if bininstall not in path:

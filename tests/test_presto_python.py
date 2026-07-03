@@ -51,7 +51,7 @@ assert y.dt == 0.125
 os.remove("xxx.inf")
 print("success")
 
-print("""Note: If the following fails, edit $PRESTO/meson.build and remove
+print("""Note: If the following fails, edit the top-level meson.build and remove
         '-DUSE_FFTW_MALLOC' from the `_global_c_args` definition, and re-build.""")
 print("Testing allocation and freeing of memory...", end=" ")
 for ii in range(1024):
