@@ -2,13 +2,12 @@
 #include <stdlib.h>
 #include <math.h>
 #include <string.h>
-#include "slamac.h"
+#include <erfa.h>
+#include <erfam.h>
 
 char months[12][4] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun",
     "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
 };
-
-void slaDjcl(double djm, int *iy, int *im, int *id, double *fd, int *j);
 
 /* Does not include jump discontinuities from leap seconds.  */
 /* I don't really know if it should !                        */
@@ -27,7 +26,7 @@ int main(int argc, char *argv[])
         exit(1);
     }
     MJD = atof(argv[1]);
-    slaDjcl(MJD, &year, &month, &day, &fracday, &err);
+    err = eraJd2cal(ERFA_DJM0, MJD, &year, &month, &day, &fracday);
 
     if (err == -1) {
         printf("\nTry again.  Bad MJD.\n\n");

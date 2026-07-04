@@ -1,8 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
-
-double slaCldj(int iy, int im, int id, int *j);
+#include <erfa.h>
 
 /* Does not include jump discontinuities from leap seconds.  */
 /* I don't really know if it should !                        */
@@ -14,7 +13,7 @@ double slaCldj(int iy, int im, int id, int *j);
 int main(int argc, char *argv[])
 {
     int year, month = 1, day = 1, hour = 0, min = 0, err;
-    double MJD, fracday, sec = 0.0;
+    double MJD, djm0, fracday, sec = 0.0;
 
     if (argc < 2) {
         printf("\nUsage:  'cal2mjd YYYY MM DD HH MM SS.SSSSS'\n\n");
@@ -59,17 +58,17 @@ int main(int argc, char *argv[])
         }
     }
     fracday = (hour + (min + (sec / 60.0)) / 60.0) / 24.0;
-    MJD = slaCldj(year, month, day, &err);
+    err = eraCal2jd(year, month, day, &djm0, &MJD);
     MJD += fracday;
-    if (err == 1) {
+    if (err == -1) {
         printf("\nTry again.  Bad year.\n\n");
         exit(1);
     }
-    if (err == 2) {
+    if (err == -2) {
         printf("\nTry again.  Bad month.\n\n");
         exit(1);
     }
-    if (err == 3) {
+    if (err == -3) {
         printf("\nTry again.  Bad day.\n\n");
         exit(1);
     }

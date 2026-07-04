@@ -1,5 +1,5 @@
-executable('cal2mjd', 'cal2mjd.c', 'cldj.c',
-    dependencies: libm, include_directories: inc, install: true)
+executable('cal2mjd', 'cal2mjd.c',
+    dependencies: [erfa, libm], include_directories: inc, install: true)
 
 executable('fitsdelcol', 'fitsdelcol.c',
     dependencies: [fits, libm], include_directories: inc, install: true)
@@ -10,8 +10,8 @@ executable('fitsdelrow', 'fitsdelrow.c',
 executable('makewisdom', 'makewisdom.c', 'datadir.c',
     dependencies: [fftw, libm], include_directories: inc, install: true)
 
-executable('mjd2cal', 'mjd2cal.c', 'djcl.c',
-    dependencies: libm, include_directories: inc, install: true)
+executable('mjd2cal', 'mjd2cal.c',
+    dependencies: [erfa, libm], include_directories: inc, install: true)
 
 executable('patchdata', 'patchdata.c', install: false)
 
@@ -33,9 +33,9 @@ executable('un_sc_td', 'un_sc_td.c', install: false)
 
 libpresto = library(
     'presto', 'atwood.c', 'barycenter.c', 'birdzap.c',
-    'characteristics.c', 'chkio.c', 'cldj.c',
+    'characteristics.c', 'chkio.c',
     'clipping.c', 'corr_prep.c', 'corr_routines.c', 'correlations.c',
-    'database.c', 'datadir.c', 'dispersion.c', 'djcl.c', 'fastffts.c',
+    'database.c', 'datadir.c', 'dispersion.c', 'fastffts.c',
     'fftcalls.c', 'fitsfile.c', 'fold.c', 'fresnl.c',
     'get_candidates.c', 'hget.c', 'hput.c', 'imio.c', 'ioinf.c',
     'iomak.c', 'mask.c', 'maximize_r.c', 'maximize_rz.c',

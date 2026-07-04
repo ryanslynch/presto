@@ -22,6 +22,11 @@ float beam_halfwidth(float freq, float dish_diam);
 // Return the beam halfwidth in arcsec when freq
 // is in MHz and dish_diam is in meters
 
+double cal_to_mjd(int year, int month, int day, int *status);
+// Convert a Gregorian calendar date to the MJD at 0h.  *status is set
+// from ERFA's eraCal2jd():  0 = OK, -1 = bad year, -2 = bad month,
+// -3 = bad day (MJD still computed).
+
 void mjd_to_datestr(double mjd, char *datestr);
 // Convert an MJD to a PSRFITS-style DATEOBS
 

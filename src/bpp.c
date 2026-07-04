@@ -58,8 +58,6 @@ typedef struct chanmap {
     int mapping;
 } chanmap;
 
-double slaCldj(int iy, int im, int id, int *j);
-
 
 int compare_freq(const void *ca, const void *cb)
 /* qsort comparison function for chanmap */
@@ -120,7 +118,7 @@ static double UT_strings_to_MJD(char *date, char *start_time,
     sscanf(start_time, "%2d:%2d:%2d", &hour, &min, &sec);
     /* Recorded BCPM start time is 1 second late */
     *mjd_fracday = (hour + (min + ((sec + 1) / 60.0)) / 60.0) / 24.0;
-    *mjd_day = slaCldj(year, month, day, &err);
+    *mjd_day = cal_to_mjd(year, month, day, &err);
     return *mjd_day + *mjd_fracday;
 }
 

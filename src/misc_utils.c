@@ -1,15 +1,8 @@
 #include <ctype.h>
 #include "misc_utils.h"
-#include "slamac.h"
+#include <erfa.h>
+#include <erfam.h>
 
-#ifndef ARCSEC2RAD
-/* arcseconds to radians */
-#define ARCSEC2RAD 4.8481368110953599358991410235794797595635330237270e-6
-#endif
-#ifndef SEC2RAD
-/* seconds of time to radians */
-#define SEC2RAD    7.2722052166430399038487115353692196393452995355905e-5
-#endif
 /* Speef of light in m/s */
 #ifndef SOL
 #define SOL           299792458.0
@@ -20,13 +13,8 @@
 #endif
 
 
-/* return the max of two double values */
-#define DMAX(a,b) ((a)>(b)?(a):(b))
-
 /* like strcpy, except guaranteed to work with overlapping strings      */
 #define strMove(d,s) memmove(d,s,strlen(s)+1)
-
-void slaDjcl(double djm, int *iy, int *im, int *id, double *fd, int *j);
 
 char *rmtrail(char *str)
 /* Removes trailing space from a string */
@@ -181,14 +169,26 @@ void strtofilename(char *string)
 }
 
 
+double cal_to_mjd(int year, int month, int day, int *status)
+// Convert a Gregorian calendar date to the MJD at 0h.  *status is set
+// from ERFA's eraCal2jd():  0 = OK, -1 = bad year, -2 = bad month,
+// -3 = bad day (MJD still computed).
+{
+    double djm0, djm;
+
+    *status = eraCal2jd(year, month, day, &djm0, &djm);
+    return djm;
+}
+
+
 void mjd_to_datestr(double mjd, char *datestr)
 // Convert an MJD to a PSRFITS-style DATEOBS
 {
     int year, month, day, hour, min, err;
     double fracday, dh, dm, sec;
 
-    slaDjcl(mjd, &year, &month, &day, &fracday, &err);
-    if (err == -1) {
+    err = eraJd2cal(ERFA_DJM0, mjd, &year, &month, &day, &fracday);
+    if (err) {
         printf("Error in mjd_to_datestr:  Bad MJD '%.12f'.\n", mjd);
         exit(1);
     }
@@ -776,20 +776,23 @@ void deg2dms(double degrees, int *d, int *m, double *s)
 double dms2rad(int deg, int min, double sec)
 /* Convert degrees, minutes, and seconds of arc to radians */
 {
-    double sign = 1.0;
+    char sign = '+';
+    double rad;
 
-    if (deg < 0)
-        sign = -1.0;
-    if (deg == 0 && (min < 0 || sec < 0.0))
-        sign = -1.0;
-    return sign * ARCSEC2RAD * (60.0 * (60.0 * (double) abs(deg)
-                                        + (double) abs(min)) + fabs(sec));
+    /* A negative value in the most-significant nonzero field sets the sign */
+    if (deg < 0 || (deg == 0 && (min < 0 || sec < 0.0)))
+        sign = '-';
+    eraAf2a(sign, abs(deg), abs(min), fabs(sec), &rad);
+    return rad;
 }
 
 double hms2rad(int hour, int min, double sec)
-/* Convert hours, minutes, and seconds of arc to radians */
+/* Convert hours, minutes, and seconds of time to radians */
 {
-    return SEC2RAD * (60.0 * (60.0 * (double) hour + (double) min) + sec);
+    double rad;
+
+    eraTf2a('+', hour, min, sec, &rad);
+    return rad;
 }
 
 double mjd_sec_diff(int int1, double frac1, int int2, double frac2)
@@ -807,34 +810,5 @@ double sphere_ang_diff(double ra1, double dec1, double ra2, double dec2)
 /* Returns the angular difference in radians between two sets */
 /* of RA and DEC (in radians).                                */
 {
-
-    int i;
-    double d, vec1[3], vec2[3], s2, c2, cosb;
-
-    /* Convert coordinates from spherical to Cartesian */
-
-    cosb = cos(dec1);
-    vec1[0] = cos(ra1) * cosb;
-    vec1[1] = sin(ra1) * cosb;
-    vec1[2] = sin(dec1);
-    cosb = cos(dec2);
-    vec2[0] = cos(ra2) * cosb;
-    vec2[1] = sin(ra2) * cosb;
-    vec2[2] = sin(dec2);
-
-    /* Modulus squared of half the difference vector */
-
-    s2 = 0.0;
-    for (i = 0; i < 3; i++) {
-        d = vec1[i] - vec2[i];
-        s2 += d * d;
-    }
-    s2 /= 4.0;
-
-    /* Angle between the vectors */
-
-    c2 = 1.0 - s2;
-    return 2.0 * atan2(sqrt(s2), sqrt(DMAX(0.0, c2)));
+    return eraSeps(ra1, dec1, ra2, dec2);
 }
-
-#undef DMAX

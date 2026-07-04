@@ -1,4 +1,15 @@
 ## Development (unreleased, since v5.3.1):
+ * Removed the vendored **Starlink SLALIB** date/time routines (`src/cldj.c`,
+   `src/djcl.c`, `include/slalib.h`, `include/slamac.h`) and replaced their use with
+   **ERFA**, which is already a hard dependency (barycentering).  `slaCldj` (Gregorian
+   calendar &rarr; MJD) is now `eraCal2jd`, reached through a new libpresto helper
+   `cal_to_mjd()` in `misc_utils.c` (used by the PSRFITS/SPIGOT/BPP/WAPP readers and
+   the `cal2mjd` tool); `slaDjcl` (MJD &rarr; calendar) is now `eraJd2cal` (in
+   `mjd_to_datestr()` and the `mjd2cal` tool).  While in `misc_utils.c`,
+   `sphere_ang_diff()` now wraps `eraSeps()` (results agree to ~4e-15 rad), and
+   `dms2rad()`/`hms2rad()` now wrap `eraAf2a()`/`eraTf2a()` so ERFA owns the tricky
+   sign conventions (e.g. negative declinations) — output is bit-identical to the old
+   homegrown arithmetic.  No behavior change for any tool.
  * Removed the vendored **RANDLIB** random-number library (`src/randlib.c`,
    `src/com.c`, `include/randlib.h`) and replaced its use in `makedata` with GSL's
    generators (`gsl_rng` seeded from the clock/PID, `gsl_ran_gaussian` for Gaussian

@@ -32,7 +32,6 @@ static fftwf_plan fftplan;
 static float clip_sigma_st = 0.0, *lags = NULL;
 //static int using_MPI = 0;
 
-double slaCldj(int iy, int im, int id, int *j);
 extern short transpose_bytes(unsigned char *a, int nx, int ny, unsigned char *move,
                              int move_size);
 
@@ -193,7 +192,7 @@ static double UT_strings_to_MJD(char *obs_date, char *start_time,
     sscanf(obs_date, "%4d%2d%2d", &year, &month, &day);
     sscanf(start_time, "%2d:%2d:%2d", &hour, &min, &sec);
     *mjd_fracday = (hour + (min + (sec / 60.0)) / 60.0) / 24.0;
-    *mjd_day = slaCldj(year, month, day, &err);
+    *mjd_day = cal_to_mjd(year, month, day, &err);
     return *mjd_day + *mjd_fracday;
 }
 

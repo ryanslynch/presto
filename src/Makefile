@@ -132,7 +132,7 @@ CLIG = pyclig
 	mv ../clig/$*_cmd.1 ../docs/$*.1
 
 PRESTOOBJS = atwood.o barycenter.o birdzap.o\
-	characteristics.o cldj.o chkio.o corr_prep.o corr_routines.o\
+	characteristics.o chkio.o corr_prep.o corr_routines.o\
 	correlations.o database.o datadir.o dispersion.o\
 	fastffts.o fftcalls.o fold.o fresnl.o ioinf.o\
 	get_candidates.o iomak.o maximize_r.o maximize_rz.o\
@@ -141,7 +141,7 @@ PRESTOOBJS = atwood.o barycenter.o birdzap.o\
 	rzinterp.o rzwinterp.o select.o sorter.o swapendian.o\
 	transpose.o twopass.o twopass_real_fwd.o\
 	twopass_real_inv.o vectors.o mask.o\
-	fitsfile.o hget.o hput.o imio.o djcl.o range_parse.o
+	fitsfile.o hget.o hput.o imio.o range_parse.o
 
 INSTRUMENTOBJS = backend_common.o zerodm.o sigproc_fb.o psrfits.o
 
@@ -246,11 +246,11 @@ makedata: makedata.o libpresto
 makeinf: makeinf.o ioinf.o libpresto
 	$(CC) $(CLINKFLAGS) -o $(PRESTO)/bin/$@ makeinf.o ioinf.o $(PRESTOLINK) -lm
 
-mjd2cal: djcl.o mjd2cal.o
-	$(CC) $(CLINKFLAGS) -o $(PRESTO)/bin/$@ djcl.o mjd2cal.o -lm
+mjd2cal: mjd2cal.o
+	$(CC) $(CLINKFLAGS) -o $(PRESTO)/bin/$@ mjd2cal.o -lerfa -lm
 
-cal2mjd: cldj.o cal2mjd.o
-	$(CC) $(CLINKFLAGS) -o $(PRESTO)/bin/$@ cldj.o cal2mjd.o -lm
+cal2mjd: cal2mjd.o
+	$(CC) $(CLINKFLAGS) -o $(PRESTO)/bin/$@ cal2mjd.o -lerfa -lm
 
 plotbincand: plotbincand.o $(PLOT2DOBJS) libpresto
 	$(FC) $(FLINKFLAGS) -o $(PRESTO)/bin/$@ $(PLOT2DOBJS) plotbincand.o $(PRESTOLINK) $(PGPLOTLINK) -lm

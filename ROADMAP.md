@@ -169,6 +169,16 @@ provided the two prerequisites listed here: the observatory-position database no
 leap seconds come from ERFA's built-in table (`eraDat` — note this means very new leap seconds,
 should they ever resume, require an ERFA update).
 
+**[DONE]** The vendored Starlink SLALIB date/time routines (`src/cldj.c`, `src/djcl.c`,
+`include/slalib.h`, `include/slamac.h`) are gone. `slaCldj` (Gregorian→MJD) is now `eraCal2jd`
+via a new libpresto helper `cal_to_mjd()` in `misc_utils.c` (used by the PSRFITS/SPIGOT/BPP/WAPP
+readers and the `cal2mjd` tool); `slaDjcl` (MJD→Gregorian) is now `eraJd2cal` (in `mjd_to_datestr()`
+and the `mjd2cal` tool). While there, `sphere_ang_diff()` now wraps `eraSeps()` (agrees to ~4e-15
+rad) and `dms2rad()`/`hms2rad()` wrap `eraAf2a()`/`eraTf2a()` so ERFA owns the sign conventions
+(bit-identical output). No behavior change for any tool. Still to do: the Python `parfile.py`
+optionally imports the old `slalib` package (`sla_ecleq`/`sla_eqecl`/`sla_eqgal`); those could
+move to astropy (already a required dep), minding TEMPO's ecliptic-obliquity conventions.
+
 ### Replace numerical routines with GSL
 
 Replace the in-tree median and statistics calls with well-tested GSL equivalents.
@@ -236,8 +246,9 @@ removed too.
 - **[DONE]** Replaced the randlib stuff (`src/randlib.c`, `src/com.c`, `include/randlib.h`)
   with GSL's `gsl_rng`/`gsl_ran_gaussian`/`gsl_ran_poisson`. It was only used by `makedata`
   (and the unbuilt legacy `tests/test_ffts.c`); those files are now gone.
-- Replace various little time and coordinate utilites (e.g. `cldj.c`, some routines in 
-  `misc_utils.c`, and the calculations in `mjd2cal` and `cal2mjd` with ERFA calls.)
+- **[DONE]** Replaced the vendored SLALIB time/coordinate utilities (`cldj.c`, `djcl.c`, and
+  the `dms2rad`/`hms2rad`/`sphere_ang_diff`/`mjd_to_datestr` routines in `misc_utils.c`, plus
+  the `mjd2cal` and `cal2mjd` tools) with ERFA calls. See the ERFA section above for details.
 
 ### Develop a plan, with scripts, for doing proper tagged releases
 

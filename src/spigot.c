@@ -33,7 +33,6 @@ static float lag_factor[SPIGOT_MAXLAGLEN], lag_offset[SPIGOT_MAXLAGLEN];
 //static int using_MPI = 0;
 static float lag_scale_env = 1.0;
 
-double slaCldj(int iy, int im, int id, int *j);
 extern short transpose_bytes(unsigned char *a, int nx, int ny, unsigned char *move,
                              int move_size);
 
@@ -57,7 +56,7 @@ static double UT_strings_to_MJD(char *obs_date, char *start_time,
     sscanf(remove_whitespace(obs_date), "%4d-%2d-%2d", &year, &month, &day);
     sscanf(remove_whitespace(start_time), "%2d:%2d:%2d", &hour, &min, &sec);
     *mjd_fracday = (hour + (min + (sec / 60.0)) / 60.0) / 24.0;
-    *mjd_day = slaCldj(year, month, day, &err);
+    *mjd_day = cal_to_mjd(year, month, day, &err);
     return *mjd_day + *mjd_fracday;
 }
 

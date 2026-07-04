@@ -11,7 +11,6 @@ static float *fdatabuffer, *offsets, *scales, *weights;
 static int cur_file = 0, cur_subint = 1, numbuffered = 0, offs_sub_are_zero = 0;
 static long long cur_spec = 0, new_spec = 0;
 
-extern double slaCldj(int iy, int im, int id, int *j);
 extern void add_padding(float *fdata, float *padding, int numchan, int numtopad);
 
 void get_PSRFITS_subint(float *fdata, unsigned char *cdata, struct spectra_info *s);
@@ -38,7 +37,7 @@ double DATEOBS_to_MJD(char *dateobs, int *mjd_day, double *mjd_fracday)
     sscanf(dateobs, "%4d-%2d-%2dT%2d:%2d:%lf",
            &year, &month, &day, &hour, &min, &sec);
     *mjd_fracday = (hour + (min + (sec / 60.0)) / 60.0) / 24.0;
-    *mjd_day = slaCldj(year, month, day, &err);
+    *mjd_day = cal_to_mjd(year, month, day, &err);
     return *mjd_day + *mjd_fracday;
 }
 
