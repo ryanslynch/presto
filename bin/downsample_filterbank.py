@@ -54,7 +54,7 @@ if __name__ == "__main__":
     for ii in range(numspec // DS_fact):
         try:
             x = num.fromfile(infile, dtype=num.ubyte, count=DS_fact*nchans)
-            x.shape = (DS_fact, nchans)
+            x = num.reshape(x, (DS_fact, nchans))
             dsx = (x.mean(0)+0.5).astype(num.ubyte)
             dsx.tofile(outfile)
         except:

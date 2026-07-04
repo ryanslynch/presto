@@ -382,7 +382,7 @@ def main():
             timeseries = np.fromfile(filenm, dtype=np.float32, count=roundN)
             # Split the timeseries into chunks for detrending
             numblocks = roundN // detrendlen
-            timeseries.shape = (numblocks, detrendlen)
+            timeseries = np.reshape(timeseries, (numblocks, detrendlen))
             stds = np.zeros(numblocks, dtype=np.float64)
             # de-trend the data one chunk at a time
             print('  De-trending the data and computing statistics...')
@@ -435,7 +435,7 @@ def main():
 
             # Now normalize all of the data and reshape it to 1-D
             timeseries /= stds[:,np.newaxis]
-            timeseries.shape = (roundN,)
+            timeseries = np.reshape(timeseries, (roundN,))
             # And set the data in the bad blocks to zeros
             # Even though we don't search these parts, it is important
             # because of the overlaps for the convolutions

@@ -746,7 +746,7 @@ def show_ffdot_plane(
     """
     ffdp = ffdot_plane(data, r, dr, numr, z, dz, numz)
     ffdpow = spectralpower(ffdp.ravel())
-    ffdpow.shape = (numz, numr)
+    ffdpow = np.reshape(ffdpow, (numz, numr))
     startbin = int(r - (numr * dr) / 2)
     startz = int(z - (numz * dz) / 2)
     x = np.arange(numr, dtype="d") * dr + startbin

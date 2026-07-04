@@ -61,7 +61,7 @@ def detrending(data, is_fast):
     data = data[:roundN]  # here we redefining the arrat and loosing some samples
     # Split the data into chunks for detrending
     numblocks = roundN / detrendlen
-    data.shape = (numblocks, detrendlen)
+    data = np.reshape(data, (numblocks, detrendlen))
     stds = np.zeros(numblocks, dtype=np.float64)
     # de-trend the data one chunk at a time and compute statistics
     for ii, chunk in enumerate(data):
@@ -110,7 +110,7 @@ def detrending(data, is_fast):
 
     # Now normalize all of the data and reshape it to 1-D
     data /= stds[:, np.newaxis]
-    data.shape = (roundN,)
+    data = np.reshape(data, (roundN,))
 
     return data
 

@@ -1106,7 +1106,7 @@ Keywords:
          ## From this point on, only the square matrix, consisting of the
          ## triangle of R, is needed.
          fjac = fjac[0:n, 0:n]
-         fjac.shape = [n, n]
+         fjac = numpy.reshape(fjac, [n, n])
          temp = fjac.copy()
          for i in range(n):
             temp[:,i] = fjac[:, ipvt[i]]
@@ -1318,7 +1318,7 @@ Keywords:
              and (len(ipvt) >= n)):
             catch_msg = 'computing the covariance matrix'
             cv = self.calc_covar(fjac[0:n,0:n], ipvt[0:n])
-            cv.shape = [n, n]
+            cv = numpy.reshape(cv, [n, n])
             nn = len(xall)
 
             ## Fill in actual covariance matrix, accounting for fixed
@@ -1493,7 +1493,7 @@ Keywords:
          ## Select only the free parameters
          if len(ifree) < nall:
             fjac = fjac[:,ifree]
-            fjac.shape = [m, n]
+            fjac = numpy.reshape(fjac, [m, n])
             return(fjac)
 
       fjac = numpy.zeros([m, n], numpy.float64)
@@ -2192,7 +2192,7 @@ Keywords:
 
       if (ipvt is None): ipvt = numpy.arange(n)
       r = rr.copy()
-      r.shape = [n,n]
+      r = numpy.reshape(r, [n,n])
 
       ## For the inverse of r in the full upper triangle of r
       l = -1

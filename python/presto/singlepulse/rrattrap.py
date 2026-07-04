@@ -331,7 +331,7 @@ def rank_groups(groups, use_dmplan=False, min_group=45, min_sigma=8.0):
             # (there should never be actual SPs with sigma=0)
             sigmas = np.ma.masked_equal(sigmas, 0.0)
          
-            sigmas.shape = (5, int(np.ceil(numsps/5.0)))
+            sigmas = np.reshape(sigmas, (5, int(np.ceil(numsps/5.0))))
            
             maxsigmas = sigmas.max(axis=1)
             avgsigmas = sigmas.mean(axis=1)

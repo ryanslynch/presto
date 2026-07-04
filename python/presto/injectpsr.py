@@ -294,7 +294,7 @@ class SplineProfile(Profile):
         vals = super(SplineProfile, self).__call__(phs.flat)
         # Re-shape values because spline return flattened array.
         vals = np.atleast_1d(vals)
-        vals.shape = phs.shape
+        vals = np.reshape(vals, phs.shape)
         return vals
 
 
@@ -902,7 +902,7 @@ def inject(infile, outfn, prof, period, dm, nbitsout=None,
         shape = list(profvals.shape)
         shape[1:1] = [NINTEG_PER_BIN] # these next lines add a new axis=1
         shape[0] //= NINTEG_PER_BIN
-        profvals.shape = shape
+        profvals = np.reshape(profvals, shape)
         toinject = profvals.mean(axis=1)
         #toinject = profvals
         if np.ndim(toinject) > 1:

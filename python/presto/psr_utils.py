@@ -153,7 +153,7 @@ def running_avg(arr: np.ndarray, navg: int) -> np.ndarray:
         The running average of `navg` bins from `arr`.
     """
     a = np.asarray(arr, "d")
-    a.shape = (len(a) // navg, navg)
+    a = np.reshape(a, (len(a) // navg, navg))
     return np.add.reduce(np.transpose(a)) / navg
 
 

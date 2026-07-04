@@ -334,7 +334,7 @@ class FilterbankFile(object):
         num_to_read = max(0, num_to_read)
         self.filfile.seek(pos, os.SEEK_SET)
         spectra_dat = np.fromfile(self.filfile, dtype=self.dtype, count=num_to_read)
-        spectra_dat.shape = nspec, self.nchans
+        spectra_dat = np.reshape(spectra_dat, (nspec, self.nchans))
         spec = spectra.Spectra(
             self.freqs,
             self.tsamp,

@@ -43,7 +43,7 @@ print("Fraction of recovered signal power = %f" % frp)
 print(r, rmax, z, zmax, theo_max_pow, maxpow)
 # print("Raw power should be ~%.2e" % theo_max_pow)
 pvol = pvol / theo_max_pow
-pvol.shape = (np, np, np)
+pvol = num.reshape(pvol, (np, np, np))
 rs = num.arange(np) * dr - np/2*dr
 zs = num.arange(np) * dz - np/2*dz
 ws = num.arange(np) * dw - np/2*dw

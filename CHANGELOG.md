@@ -1,4 +1,12 @@
 ## Development (unreleased, since v5.3.1):
+ * Removed the long-dead `python/binresponses/` directory (`monte_ffdot`, `monte_short`,
+   `monte_sideb`, `montebinresp`).  Nothing referenced it, it was never part of the build, and
+   the code relied on the Python-2-era `Numeric`, `mpi`, `miscutils`, and `Statistics` modules,
+   so it could no longer even import.
+ * Fixed the remaining NumPy 2.5 `DeprecationWarning`s about setting `array.shape` in place by
+   switching to `np.reshape()` throughout the Python code (`rfifind`, `psr_utils`, `filterbank`,
+   `injectpsr`, `mpfit`, the `presto_src` wrapper, `singlepulse/rrattrap`, and the `detrend_dat`,
+   `downsample_filterbank`, `pulsestack`, `single_pulse_search`, and `jerk_example` scripts).
  * **Modernized the main `python/presto` modules** (per ROADMAP "Docstrings, typehints, and
    ruff"): added NumPy-style docstrings and type hints and ran `ruff format` on `psr_utils`,
    `events`, `bestprof`, `harmonic_sum`, `infodata`, `filterbank`, `polycos`, `spectra`,

@@ -60,9 +60,9 @@ class rfifind(object):
         self.pow_stats = np.fromfile(x, dtype=np.float32, count=count)
         self.avg_stats = np.fromfile(x, dtype=np.float32, count=count)
         self.std_stats = np.fromfile(x, dtype=np.float32, count=count)
-        self.pow_stats.shape = (self.nint, self.nchan)
-        self.avg_stats.shape = (self.nint, self.nchan)
-        self.std_stats.shape = (self.nint, self.nchan)
+        self.pow_stats = np.reshape(self.pow_stats, (self.nint, self.nchan))
+        self.avg_stats = np.reshape(self.avg_stats, (self.nint, self.nchan))
+        self.std_stats = np.reshape(self.std_stats, (self.nint, self.nchan))
         x.close()
 
     def read_mask(self) -> None:
