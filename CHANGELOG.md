@@ -1,4 +1,14 @@
 ## Development (unreleased, since v5.3.1):
+ * Replaced the Numerical Recipes `amoeba.c` downhill-simplex with GSL's
+   Nelder-Mead simplex (`gsl_multimin_fminimizer_nmsimplex2`) in the f-fdot
+   optimizers `max_rz_arr()` and `max_rz_arr_harmonics()` (`src/maximize_rz.c`),
+   and removed `src/amoeba.c`.  Validated with a before/after golden harness (now
+   committed as `tests/test_maximize_rz.py`): the results match the old solver to
+   well below the FFT-plan noise floor on 171/172 synthetic cases, and on the
+   remaining case GSL finds the true peak where amoeba got stuck at its initial
+   simplex vertex (a candidate started exactly on a harmonic peak).  The GSL
+   objective also guards against non-finite values so the simplex is steered away
+   from out-of-band harmonics rather than aborting.
  * **PRESTO no longer requires the `PRESTO` environment variable to be set** — a big
    change after ~26 years!  Shared runtime data (the pulsar catalog `pulsars.cat`,
    `psr_catalog.txt`, and `aliases.txt`) is now installed to `{prefix}/share/presto`,

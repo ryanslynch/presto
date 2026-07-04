@@ -131,13 +131,13 @@ CLIG = pyclig
 	mv ../clig/$*_cmd.c .
 	mv ../clig/$*_cmd.1 ../docs/$*.1
 
-PRESTOOBJS = amoeba.o atwood.o barycenter.o birdzap.o cand_output.o\
+PRESTOOBJS = atwood.o barycenter.o birdzap.o\
 	characteristics.o cldj.o chkio.o corr_prep.o corr_routines.o\
-	correlations.o database.o dispersion.o\
+	correlations.o database.o datadir.o dispersion.o\
 	fastffts.o fftcalls.o fold.o fresnl.o ioinf.o\
 	get_candidates.o iomak.o maximize_r.o maximize_rz.o\
 	maximize_rzw.o median.o minifft.o misc_utils.o clipping.o\
-	orbint.o output.o read_fft.o readpar.o responses.o\
+	observatories.o orbint.o output.o read_fft.o readpar.o responses.o\
 	rzinterp.o rzwinterp.o select.o sorter.o swapendian.o\
 	transpose.o twopass.o twopass_real_fwd.o\
 	twopass_real_inv.o vectors.o mask.o\

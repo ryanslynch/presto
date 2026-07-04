@@ -78,6 +78,13 @@ currently no CI (the stale Travis setup was removed; see ROADMAP.md).
   `PLOT2DOBJS` (PGPLOT helpers).
 - `install: false` on utility/experimental executables that are built but not installed.
 
+There is also a **legacy `src/Makefile`** (pre-meson). It is *not* part of the meson/pixi
+build, but the maintainer still uses it for quick standalone compilation checks during
+development, so **keep it roughly in sync** when you add/remove/rename C source files: mirror
+the change in its `PRESTOOBJS` list (which must match `libpresto`'s source list in
+`src/meson.build`) and, for a new/removed program, its `BINARIES` list and build rules. It
+won't always be perfectly current, but don't let it drift on file additions/removals you make.
+
 Key external dependencies: **FFTW3 single-precision** (`fftw3f` — the `f` matters), GSL, **ERFA**
 (barycentering), glib-2.0, cfitsio, PGPLOT/cpgplot, X11, libpng, and optional OpenMP and MPI
 (MPI gates `mpiprepsubband`). The **tempo2** executable is called at runtime for polyco
