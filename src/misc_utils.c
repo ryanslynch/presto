@@ -740,18 +740,26 @@ void ra_dec_from_string(char *radec, int *h_or_d, int *m, double *s)
 double hms2hours(int hours, int min, double sec)
 /* Convert hours, minutes, and seconds of time to hours */
 {
-    return (double) hours + (((double) min + sec / 60.0) / 60.0);
+    return hms2rad(hours, min, sec) * RADTODEG / 15.0;
 }
 
 void hours2hms(double hours, int *h, int *m, double *s)
 /* Convert decimal hours to hours, minutes, and seconds */
 {
+    int sign = 1;
     double tmp;
 
-    *h = (int) floor(hours);
-    tmp = (hours - *h) * 60.0;
+    if (hours < 0.0)
+        sign = -1;
+    *h = (int) floor(fabs(hours));
+    tmp = (fabs(hours) - *h) * 60.0;
     *m = (int) floor(tmp);
     *s = (tmp - *m) * 60.0;
+    *h *= sign;
+    if (*h == 0) {
+        *m *= sign;
+        *s *= sign;
+    }
 }
 
 void deg2dms(double degrees, int *d, int *m, double *s)
@@ -789,9 +797,13 @@ double dms2rad(int deg, int min, double sec)
 double hms2rad(int hour, int min, double sec)
 /* Convert hours, minutes, and seconds of time to radians */
 {
+    char sign = '+';
     double rad;
 
-    eraTf2a('+', hour, min, sec, &rad);
+    /* A negative value in the most-significant nonzero field sets the sign */
+    if (hour < 0 || (hour == 0 && (min < 0 || sec < 0.0)))
+        sign = '-';
+    eraTf2a(sign, abs(hour), abs(min), fabs(sec), &rad);
     return rad;
 }
 
