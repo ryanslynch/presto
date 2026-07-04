@@ -1,4 +1,12 @@
 ## Development (unreleased, since v5.3.1):
+ * Removed the vendored **RANDLIB** random-number library (`src/randlib.c`,
+   `src/com.c`, `include/randlib.h`) and replaced its use in `makedata` with GSL's
+   generators (`gsl_rng` seeded from the clock/PID, `gsl_ran_gaussian` for Gaussian
+   noise, `gsl_ran_poisson` for Poissonian noise).  GSL is already a hard dependency,
+   so no new dependency is introduced.  RANDLIB was only used by `makedata` and the
+   unbuilt legacy test `tests/test_ffts.c` (also ported to GSL).  `makedata` output is
+   random by construction, so this changes the specific noise realizations but not
+   their statistics.
  * Replaced the Numerical-Recipes-derived Quickselect in `src/median.c` with a thin
    wrapper around GSL's `gsl_stats_float_median()` (GSL is already a hard dependency).
    The `median()` API is unchanged, so all callers and the build files are untouched.

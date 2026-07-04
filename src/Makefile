@@ -240,8 +240,8 @@ prepfold: prepfold_cmd.c prepfold_cmd.o prepfold.o prepfold_utils.o prepfold_pip
 show_pfd: show_pfd_cmd.c show_pfd.o show_pfd_cmd.o prepfold_utils.o prepfold_plot.o least_squares.o $(PLOT2DOBJS) libpresto
 	$(FC) $(FLINKFLAGS) -o $(PRESTO)/bin/$@ show_pfd.o show_pfd_cmd.o prepfold_utils.o prepfold_plot.o least_squares.o $(PLOT2DOBJS) $(LAPACKLINK) $(PRESTOLINK) $(PGPLOTLINK) -lm
 
-makedata: com.o randlib.o makedata.o libpresto
-	$(CC) $(CLINKFLAGS) -o $(PRESTO)/bin/$@ com.o randlib.o makedata.o $(PRESTOLINK) -lm
+makedata: makedata.o libpresto
+	$(CC) $(CLINKFLAGS) -o $(PRESTO)/bin/$@ makedata.o $(PRESTOLINK) -lm
 
 makeinf: makeinf.o ioinf.o libpresto
 	$(CC) $(CLINKFLAGS) -o $(PRESTO)/bin/$@ makeinf.o ioinf.o $(PRESTOLINK) -lm

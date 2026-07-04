@@ -89,7 +89,7 @@ executable('explorefft',
     dependencies: [glib, fftw, gsl, libm, pgplot, cpgplot, x11, png], c_args: '-DUSEMMAP',
     include_directories: inc, link_with: libpresto, install: true)
 
-executable('makedata', 'makedata.c', 'com.c', 'randlib.c', 
+executable('makedata', 'makedata.c',
     dependencies: [fftw, gsl, libm], include_directories: inc, link_with: libpresto, install: true)
 
 executable('makeinf', 'makeinf.c', 'ioinf.c',

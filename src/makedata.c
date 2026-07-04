@@ -1,7 +1,9 @@
 #include "makedata.h"
 #include "makeinf.h"
-#include "randlib.h"
+#include <gsl/gsl_rng.h>
+#include <gsl/gsl_randist.h>
 #include <time.h>
+#include <unistd.h>
 
 extern char bands[NUMBANDS][40];
 extern char scopes[NUMSCOPES][40];
@@ -19,14 +21,9 @@ int main(int argc, char *argv[])
     infodata idata;
     makedata mdata;
 
-    srand(time(NULL));   // Initialization, should only be called once.
-    long s1 = rand();    // Returns a pseudo-random integer between 0 and RAND_MAX.
-    long s2 = rand();    // Returns a pseudo-random integer between 0 and RAND_MAX.
-    
-    /* Set the random number seeds for randlib */
-    ignlgi();
-    initgn(0);
-    setsd(s1, s2);
+    /* Set up and seed the GSL random number generator */
+    gsl_rng *rng = gsl_rng_alloc(gsl_rng_default);
+    gsl_rng_set(rng, (unsigned long) time(NULL) ^ (unsigned long) getpid());
 
     /* Initialization strings */
     char datafilenm[205], infofilenm[205];
@@ -181,12 +178,12 @@ int main(int argc, char *argv[])
         /*  Add Poissonian noise  */
 
         if (mdata.noise == 1)
-            signal = (float) ignpoi(signal);
+            signal = (float) gsl_ran_poisson(rng, signal);
 
         /*  Add Gaussian noise or no noise */
 
         else if (mdata.noisesig != 0.0) {
-            signal = gennor(signal, mdata.noisesig);
+            signal = signal + gsl_ran_gaussian(rng, mdata.noisesig);
 
             /*  Rounds if needed */
 
@@ -260,6 +257,7 @@ int main(int argc, char *argv[])
     /* Write infofile data */
 
     writeinf(&idata);
+    gsl_rng_free(rng);
     exit(0);
 
 }

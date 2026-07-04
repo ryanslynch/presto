@@ -11,7 +11,8 @@
 #include "vectors.h"
 #include "ransomfft.h"
 #include "meminfo.h"
-#include "randlib.h"
+#include <gsl/gsl_rng.h>
+#include <gsl/gsl_randist.h>
 
 #ifndef PI
 #define PI            3.1415926535897932384626433832795028841971693993751
@@ -37,6 +38,7 @@ int main(int argc, char *argv[])
   struct tms runtimes;
   double ttim, stim, utim, tott;
   double clk_tck = (double) sysconf(_SC_CLK_TCK);
+  gsl_rng *rng = gsl_rng_alloc(gsl_rng_default);
 
   if (argc <= 1 || argc > 4) {
     printf("\nUsage:  testffts [sign (1/-1)] [print (0/1)] [frac err tol]\n\n");
@@ -121,9 +123,9 @@ int main(int argc, char *argv[])
     for (ct = 0; ct < npts; ct++) {
       tmp = 2 * ct;
       data1[tmp] = 10.0 * sin(TWOPI * ct * 12.12345 / npts) + 100.0;
-      data1[tmp] = gennor(data1[tmp], 10.0);
+      data1[tmp] = data1[tmp] + gsl_ran_gaussian(rng, 10.0);
       data2[tmp] = data1[tmp];
-      data1[tmp + 1] = gennor(100.0, 10.0);
+      data1[tmp + 1] = 100.0 + gsl_ran_gaussian(rng, 10.0);
       data2[tmp + 1] = data1[tmp + 1];
     }
     
@@ -240,7 +242,8 @@ int main(int argc, char *argv[])
     free(data1);
     free(data2);
   }
-  
+
+  gsl_rng_free(rng);
   return 0;
   
 }

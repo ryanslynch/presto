@@ -233,7 +233,9 @@ removed too.
   **[DONE for `median.c`]** now wraps GSL's `gsl_stats_float_median()` (see above).
 - **[DONE]** `solvopt.c` and `apprgrdn.c` were dead — no callers anywhere and not even in
   the meson build (never compiled) — so they were simply removed.
-- Replace the randlib stuff used in `makedata.c` (and elsewhere?) with GSL.
+- **[DONE]** Replaced the randlib stuff (`src/randlib.c`, `src/com.c`, `include/randlib.h`)
+  with GSL's `gsl_rng`/`gsl_ran_gaussian`/`gsl_ran_poisson`. It was only used by `makedata`
+  (and the unbuilt legacy `tests/test_ffts.c`); those files are now gone.
 - Replace various little time and coordinate utilites (e.g. `cldj.c`, some routines in 
   `misc_utils.c`, and the calculations in `mjd2cal` and `cal2mjd` with ERFA calls.)
 
