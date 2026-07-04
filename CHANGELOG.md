@@ -1,4 +1,21 @@
 ## Development (unreleased, since v5.3.1):
+ * `prepfold`'s `.pfd.ps` plots are now converted to anti-aliased `.png` images
+   using **Ghostscript** (`gs`) called directly, replacing latex2html's `pstoimg`.
+   latex2html is large and, crucially, not available on conda-forge; `pstoimg` was
+   only a wrapper around `gs`, so the output is identical (`-dTextAlphaBits`/
+   `-dGraphicsAlphaBits` give the anti-aliasing, `Orientation 3` reproduces the old
+   `-flip cw`, and `-dEPSCrop` reproduces `-crop a`).  `prepfold` now skips the
+   `.png` silently if `gs` is missing or fails — the all-important `.ps` is always
+   written.  The helper scripts (`bin/pfd2png.sh`, the GBNCC/GBT350/PALFA survey
+   scripts, `examplescripts/jerk_example.py`), the `INSTALL.md`/Dockerfile
+   dependency lists, and `pixi.toml` were switched from `latex2html` to
+   `ghostscript` to match.
+ * General cleanup: removed many outdated and stray files, including obsolete
+   standalone programs (`src/searchmultidms.c`, `src/showmulti.c`,
+   `src/showmulti_dm.c`, `src/testtree.c`), a batch of legacy C test programs along
+   with the old `tests/Makefile`, stale data tables (`lib/goodfactors.txt`,
+   `lib/parkes_birds.txt`), and old documentation (`docs/presto.tex` and its
+   figures).
  * `makewisdom` now defaults to a fast `FFTW_MEASURE` pass that skips the two
    largest FFT sizes in each of its size loops (a few seconds rather than
    ~10-20 min); pass `-patient` for the previous full `FFTW_PATIENT` sweep over

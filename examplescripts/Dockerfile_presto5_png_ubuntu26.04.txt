@@ -15,7 +15,9 @@ RUN apt-get update &&\
     git \   
     ca-certificates
 
-RUN apt install -y git build-essential libfftw3-bin libfftw3-dev pgplot5 pgplot5-dev libglib2.0-dev libcfitsio-bin libcfitsio-dev libpng-dev gfortran tcsh autoconf libx11-dev python3-dev python3-numpy python3-pip python3-venv    emacs nano rsync latex2html less libgsl28 libgsl-dev
+# 'ghostscript' provides 'gs', which prepfold uses to make the nice anti-aliased
+# .png plots (this replaced the much larger 'latex2html'/'pstoimg' package).
+RUN apt install -y git build-essential libfftw3-bin libfftw3-dev pgplot5 pgplot5-dev libglib2.0-dev libcfitsio-bin libcfitsio-dev libpng-dev gfortran tcsh autoconf libx11-dev python3-dev python3-numpy python3-pip python3-venv    emacs nano rsync ghostscript less libgsl28 libgsl-dev
 
 
 # Make Python 3.12 the default version

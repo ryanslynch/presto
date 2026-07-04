@@ -25,7 +25,7 @@ With v5, we have switched to building and installing with [meson](https://mesonb
 **If you are interested in using Docker or Singularity containers of PRESTO, see the bottom of this file!**
 
 As always, there are a set of essential packages required to build PRESTO. This command should do it on a Debian/Ubuntu-like system:
-`apt install git build-essential libfftw3-bin libfftw3-dev libgsl28 libgsl-dev liberfa-dev pgplot5 libglib2.0-dev libcfitsio-bin libcfitsio-dev libpng-dev latex2html gfortran tcsh autoconf libx11-dev python3-dev python3-numpy python3-pip`
+`apt install git build-essential libfftw3-bin libfftw3-dev libgsl28 libgsl-dev liberfa-dev pgplot5 libglib2.0-dev libcfitsio-bin libcfitsio-dev libpng-dev ghostscript gfortran tcsh autoconf libx11-dev python3-dev python3-numpy python3-pip`
 
 Setting the `PRESTO` environment variable is now **optional** — the installed tools locate their runtime data (the pulsar catalog, etc.) automatically in `{prefix}/share/presto`. It is still handy as a shorthand for the commands below (which use `$PRESTO`) and works as an override when running from an uninstalled source tree, so you may want to point it at the top-level PRESTO git checkout. Either way, make sure that `$PRESTO/lib` and `$PRESTO/bin` are **not** in your `PATH` or `LD_LIBRARY_PATH` or `PYTHONPATH` environment variables as we have required in the past. It is probably a good idea to clean your earlier compiles, as well.
 
@@ -250,7 +250,7 @@ Couple quick trouble-shooting tips if you are having problems compiling and runn
    - `libcfitsio-bin`
    - `libcfitsio-dev`
    - `libpng-dev`
-   - `latex2html`
+   - `ghostscript`
    - `gfortran`
    - `tcsh`
    - `autoconf`
@@ -259,7 +259,7 @@ Couple quick trouble-shooting tips if you are having problems compiling and runn
    - `python3-numpy`
    - `python3-pip`
    
-   And the following command should get all of them: `apt install git build-essential libfftw3-bin libfftw3-dev libgsl28 libgsl-dev liberfa-dev pgplot5 libglib2.0-dev libcfitsio-bin libcfitsio-dev libpng-dev latex2html gfortran tcsh autoconf libx11-dev python3-dev python3-numpy python3-pip`
+   And the following command should get all of them: `apt install git build-essential libfftw3-bin libfftw3-dev libgsl28 libgsl-dev liberfa-dev pgplot5 libglib2.0-dev libcfitsio-bin libcfitsio-dev libpng-dev ghostscript gfortran tcsh autoconf libx11-dev python3-dev python3-numpy python3-pip`
 
 3. After the Python modules are built and installed, and you run `python tests/test_presto_python.py`, if you get a memory error, please contact Scott! I think that these issues are fixed, but if they are not, we will need to change the build process a tiny bit with a special variable define.
    
@@ -304,7 +304,7 @@ If you are using **MacOS**, Paul Ray has been running PRESTO a lot and knows sev
 
 Alessandro Ridolfi wrote recipes to create Docker images which you can use and modify in the `examplescripts` directory.
 
-He made two versions: one without PNG image support (i.e. providing `pstoimg` via the latex2html package, which is quite large. `pstoimg` is used by `prepfold` to make the nice .png versions of the .pfd.ps files) and the other one without the PNG support. The files are:
+He made two versions: one with PNG image support (i.e. providing `gs` via the `ghostscript` package, which `prepfold` uses to make the nice anti-aliased .png versions of the .pfd.ps files) and the other one without the PNG support. Note that `prepfold` calls `gs` only if it is present; if it is missing, the .ps plot is still written and no error is reported. (Earlier versions of PRESTO used `pstoimg` from the large `latex2html` package for this; `pstoimg` was itself only a wrapper around Ghostscript, which is not available on conda-forge, so PRESTO now calls `gs` directly.) The files are:
 - examplescripts/Dockerfile_presto5_png_ubuntu24.04.txt
 - examplescripts/Dockerfile_presto5_ubuntu24.04.txt
 

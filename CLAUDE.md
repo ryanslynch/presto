@@ -131,6 +131,11 @@ Python entry-point scripts live in `bin/` (e.g. `DDplan.py`, `single_pulse_searc
 - Version numbers live in several places and must be kept in sync when releasing: top-level
   `meson.build`, `python/pyproject.toml`, and `python/presto/__init__.py`. See
   `determine_version.py` and `CHANGELOG.md`.
+- **Add a `CHANGELOG.md` entry for any non-trivial change** (new/changed/removed features,
+  dependency changes, behavior changes, notable cleanups — anything a user or packager might
+  care about). Add it as a bullet at the top of the `## Development (unreleased...)` section
+  (newest first), in the same style as the existing entries, as part of the same commit. Trivial
+  changes (typo fixes, comment tweaks, minor internal refactors) don't need one.
 - Most compiled programs print usage when run with no arguments — the fastest way to learn a
   tool's interface (and to confirm a `.cli` edit worked after rebuild).
 - macOS builds need workarounds (linker flags, `fix_rpath_duplicates.py` install script); see

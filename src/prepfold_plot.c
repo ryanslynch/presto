@@ -1285,18 +1285,42 @@ void prepfold_plot(prepfoldinfo * search, plotflags * flags, int xwin, float *pp
         }
         cpgclos();
         if (ct == 0) {
-            // Attempt to change the .ps into a nice .png using latex2html...
-            int retval = 0;
-            char *command = (char *) malloc(2 * strlen(search->pgdev) + 60);
-            sprintf(command, "pstoimg -density 200 -antialias -flip cw "
-                    "-quiet -type png -out %.*s.png %.*s",
-                    (int) strlen(search->pgdev) - 7, search->pgdev,
-                    (int) strlen(search->pgdev) - 4, search->pgdev);
-            if ((retval = system(command))) {
-                perror("Error running pstoimg in prepfold_plot()");
-                printf("\n");
+            // Convert the .ps into a nice anti-aliased .png.
+            //
+            // This used to call latex2html's 'pstoimg', but that package is
+            // not available on conda-forge.  pstoimg is only a wrapper that
+            // uses Ghostscript ('gs') for the actual anti-aliased rendering,
+            // so we now invoke gs directly.  gs is well-maintained and is on
+            // conda-forge.  The -dTextAlphaBits/-dGraphicsAlphaBits flags give
+            // the exact same anti-aliasing pstoimg used, and Orientation 3
+            // reproduces pstoimg's "-flip cw".  The .png is only a nice-to-have
+            // extra: the all-important .ps has already been written, so if gs
+            // is missing or fails we quietly skip the .png (no warning, no die).
+            //
+            // Original latex2html/pstoimg version, kept for reference:
+            //   char *command = (char *) malloc(2 * strlen(search->pgdev) + 60);
+            //   sprintf(command, "pstoimg -density 200 -antialias -flip cw "
+            //           "-quiet -type png -out %.*s.png %.*s",
+            //           (int) strlen(search->pgdev) - 7, search->pgdev,
+            //           (int) strlen(search->pgdev) - 4, search->pgdev);
+            //   if ((retval = system(command))) {
+            //       perror("Error running pstoimg in prepfold_plot()");
+            //       printf("\n");
+            //   }
+            if (system("gs --version > /dev/null 2>&1") == 0) {
+                char *command = (char *) malloc(2 * strlen(search->pgdev) + 160);
+                sprintf(command,
+                        "gs -q -dSAFER -dBATCH -dNOPAUSE -sDEVICE=png16m -r200 "
+                        "-dTextAlphaBits=4 -dGraphicsAlphaBits=4 "
+                        "-sOutputFile=%.*s.png "
+                        "-c \"<</Orientation 3>> setpagedevice\" -f %.*s "
+                        "> /dev/null 2>&1",
+                        (int) strlen(search->pgdev) - 7, search->pgdev,
+                        (int) strlen(search->pgdev) - 4, search->pgdev);
+                // The .png is just nice-to-have, so ignore any gs failure.
+                system(command);
+                free(command);
             }
-            free(command);
         }
     }
     vect_free(bestprof);

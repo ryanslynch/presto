@@ -132,10 +132,15 @@ for ii in range(np):
 if device=="/XWIN":
     ppgplot.pgclos()
 else:
+    # The .eps -> .png conversion below used to use latex2html's 'pstoimg'
+    # (not on conda-forge), which was only a wrapper around Ghostscript ('gs').
+    # We now call gs directly: -dTextAlphaBits/-dGraphicsAlphaBits give the same
+    # anti-aliasing and -dEPSCrop reproduces pstoimg's "-crop a".
+    #   Original: pstoimg -density 200 -antialias -crop a jerk_*eps
     print("""If you want to make a movie with the resulting .eps files, here are
 the appropriate commands:
-    
-> python jerk_example.py 
-> pstoimg -density 200 -antialias -crop a jerk_*eps
+
+> python jerk_example.py
+> for f in jerk_*.eps; do gs -q -dSAFER -dBATCH -dNOPAUSE -sDEVICE=png16m -r200 -dTextAlphaBits=4 -dGraphicsAlphaBits=4 -dEPSCrop -sOutputFile=${f%.eps}.png -f $f; done
 > ffmpeg -r 16 -f image2 -s 1000x1000 -i jerk_%03d.png -vcodec libx264 -crf 25 -pix_fmt yuv420p jerk_search.mp4
 """)

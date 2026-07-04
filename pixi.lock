@@ -69,6 +69,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/gcc_impl_linux-64-14.3.0-h7609e47_19.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/gcc_linux-64-14.3.0-h50e9bb6_27.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/gflags-2.2.2-h5888daf_1005.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/ghostscript-10.07.1-hecca717_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/glib-2.88.2-hbe0478d_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/glib-tools-2.88.2-h8094192_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/glog-0.7.1-hbabe93e_0.conda
@@ -500,6 +501,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-64/freetype-2.14.3-h694c41f_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/fribidi-1.0.16-h8616949_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/gflags-2.2.2-hac325c4_1005.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-64/ghostscript-10.07.1-hcc62823_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/glib-2.88.2-h4740e6f_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/glib-tools-2.88.2-h04fd18e_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/glog-0.7.1-h2790a97_0.conda
@@ -779,6 +781,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/freetype-2.14.3-hce30654_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/fribidi-1.0.16-hc919400_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/gflags-2.2.2-hf9b8971_1005.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/ghostscript-10.04.0-hf9b8971_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/glib-2.88.2-h2792883_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/glib-tools-2.88.2-h246a70f_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/glog-0.7.1-heb240a5_0.conda
@@ -1633,6 +1636,18 @@ packages:
     - gflags >=2.2.2,<2.3.0a0
   size: 119654
   timestamp: 1726600001928
+- conda: https://conda.anaconda.org/conda-forge/linux-64/ghostscript-10.07.1-hecca717_0.conda
+  sha256: 2686eae130a785566612d808c922372943efe0b21c04afcfa42edfd264ccc1e6
+  md5: de2303b5911424628b4ad8bb49855bc8
+  depends:
+  - __glibc >=2.17,<3.0.a0
+  - libgcc >=14
+  - libstdcxx >=14
+  license: AGPL-3.0-only
+  license_family: AGPL
+  run_exports: {}
+  size: 62853028
+  timestamp: 1779452333796
 - conda: https://conda.anaconda.org/conda-forge/linux-64/glib-2.88.2-hbe0478d_0.conda
   sha256: 84448dc33e66a2c74c58fb2a95d9e84547bc65cf44dcebf447b8d236c0ccc68b
   md5: 7ac6295be13fafd7f20869b30b47ec2f
@@ -6394,6 +6409,17 @@ packages:
     - gflags >=2.2.2,<2.3.0a0
   size: 84946
   timestamp: 1726600054963
+- conda: https://conda.anaconda.org/conda-forge/osx-64/ghostscript-10.07.1-hcc62823_0.conda
+  sha256: d1d87208fdf59dc170da670d53ca80af13497c64c946508338a8c6856aa65ac0
+  md5: fa63d73d279bf828a699b7197eddf6c9
+  depends:
+  - __osx >=11.0
+  - libcxx >=19
+  license: AGPL-3.0-only
+  license_family: AGPL
+  run_exports: {}
+  size: 61888303
+  timestamp: 1779453647399
 - conda: https://conda.anaconda.org/conda-forge/osx-64/glib-2.88.2-h4740e6f_0.conda
   sha256: 941872a4316ada8fe9a097b37939b3460041b7e3171f5b537f833c11ca5627f3
   md5: b4be88757a730b3adbbc27196321784a
@@ -8986,6 +9012,17 @@ packages:
     - gflags >=2.2.2,<2.3.0a0
   size: 82090
   timestamp: 1726600145480
+- conda: https://conda.anaconda.org/conda-forge/osx-arm64/ghostscript-10.04.0-hf9b8971_0.conda
+  sha256: 14ffaf8c8b2c9f1f6ce5d6e2ba812c823e45263d85420b817a441b97c5ff2efd
+  md5: 9c76de1251a1cba00adfa38e083aef1b
+  depends:
+  - __osx >=11.0
+  - libcxx >=17
+  license: AGPL-3.0-only
+  license_family: AGPL
+  run_exports: {}
+  size: 59259516
+  timestamp: 1726699336785
 - conda: https://conda.anaconda.org/conda-forge/osx-arm64/glib-2.88.2-h2792883_0.conda
   sha256: 74b4c85756d2584abf3972035a3d68edd5b723527460a261b6df21bfe6980f7e
   md5: a53abd3898d5addc45f164e8c5dbef50

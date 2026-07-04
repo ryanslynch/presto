@@ -545,16 +545,31 @@ def main(fil_filenm, workdir):
 
     psfiles = glob.glob("*.ps")
     for psfile in psfiles:
+        # The .ps -> .png conversion used to use latex2html's 'pstoimg', but
+        # that package is not on conda-forge.  pstoimg was only a wrapper around
+        # Ghostscript ('gs'), which does the actual anti-aliased rendering and
+        # *is* on conda-forge, so we now call gs directly.  -dTextAlphaBits/
+        # -dGraphicsAlphaBits give pstoimg's anti-aliasing, Orientation 3
+        # reproduces its "-flip cw", and -dEPSCrop reproduces its "-crop a".
+        # (eps2eps is itself a Ghostscript tool, so no extra dependency.)
+        pngfile = psfile.replace(".ps", ".png")
         if "singlepulse" in psfile:
             # For some reason the singlepulse files don't transform nicely...
             epsfile = psfile.replace(".ps", ".eps")
             os.system("eps2eps "+psfile+" "+epsfile)
-            os.system("pstoimg -density 100 -crop a "+epsfile)
+            # Original: os.system("pstoimg -density 100 -crop a "+epsfile)
+            os.system("gs -q -dSAFER -dBATCH -dNOPAUSE -sDEVICE=png16m -r100 "
+                      "-dTextAlphaBits=4 -dGraphicsAlphaBits=4 -dEPSCrop "
+                      "-sOutputFile=%s -f %s" % (pngfile, epsfile))
             try:
                 os.remove(epsfile)
             except: pass
         else:
-            os.system("pstoimg -density 100 -flip cw "+psfile)
+            # Original: os.system("pstoimg -density 100 -flip cw "+psfile)
+            os.system("gs -q -dSAFER -dBATCH -dNOPAUSE -sDEVICE=png16m -r100 "
+                      "-dTextAlphaBits=4 -dGraphicsAlphaBits=4 -sOutputFile=%s "
+                      "-c \"<</Orientation 3>> setpagedevice\" -f %s"
+                      % (pngfile, psfile))
         os.system("gzip "+psfile)
     
     # NOTE:  need to add database commands
