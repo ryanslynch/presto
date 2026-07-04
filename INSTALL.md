@@ -84,7 +84,7 @@ And that should do it! You can quickly test to see if most things are working by
 
 Another good test is to see if you can run and fit the default profile in `pygaussfit.py`
 
-If you want slightly faster FFT calls, just run the installed `makewisdom`. It writes `fftw_wisdom.txt` straight into `{prefix}/share/presto` (or `$PRESTO/lib` if you have `PRESTO` set), which is where PRESTO looks for it at runtime — no manual copying needed. You can pass an explicit output path as an argument to override the destination.
+If you want slightly faster FFT calls, just run the installed `makewisdom`. By default it uses `FFTW_MEASURE` and skips the largest FFT sizes, so it finishes in a few seconds; add `-patient` to instead use `FFTW_PATIENT` over the full set of sizes for higher-quality (but much slower, ~10-20 min) wisdom. It writes `fftw_wisdom.txt` straight into `{prefix}/share/presto` (or `$PRESTO/lib` if you have `PRESTO` set), which is where PRESTO looks for it at runtime — no manual copying needed. You can pass an explicit output path as an argument to override the destination.
 
 Note that you can uninstall everything via:
 
@@ -205,7 +205,7 @@ Note that you can uninstall everything via:
 
 16. **Run `makewisdom` to have (slightly) fast FFTs**
 
-    Just run `makewisdom` (it is installed to `{prefix}/bin`). It takes about 10-20 min to run, so be patient. It writes `fftw_wisdom.txt` directly into `{prefix}/share/presto` (or `$PRESTO/lib` if you have `PRESTO` set), which is where PRESTO looks for it at runtime, so no manual move is needed. To write it elsewhere, pass an output path as an argument.
+    Just run `makewisdom` (it is installed to `{prefix}/bin`). By default it uses `FFTW_MEASURE` and skips the largest FFT sizes, so it only takes a few seconds. For higher-quality wisdom over the full set of sizes, run `makewisdom -patient`, which uses `FFTW_PATIENT` and takes about 10-20 min, so be patient. Either way it writes `fftw_wisdom.txt` directly into `{prefix}/share/presto` (or `$PRESTO/lib` if you have `PRESTO` set), which is where PRESTO looks for it at runtime, so no manual move is needed. To write it elsewhere, pass an output path as an argument.
 
 17. **Go find pulsars!**
     

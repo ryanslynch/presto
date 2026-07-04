@@ -1,4 +1,8 @@
 ## Development (unreleased, since v5.3.1):
+ * `makewisdom` now defaults to a fast `FFTW_MEASURE` pass that skips the two
+   largest FFT sizes in each of its size loops (a few seconds rather than
+   ~10-20 min); pass `-patient` for the previous full `FFTW_PATIENT` sweep over
+   all sizes for higher-quality wisdom.
  * Replaced the Numerical Recipes `amoeba.c` downhill-simplex with GSL's
    Nelder-Mead simplex (`gsl_multimin_fminimizer_nmsimplex2`) in the f-fdot
    optimizers `max_rz_arr()` and `max_rz_arr_harmonics()` (`src/maximize_rz.c`),
