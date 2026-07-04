@@ -173,6 +173,10 @@ should they ever resume, require an ERFA update).
 
 Replace the in-tree median and statistics calls with well-tested GSL equivalents.
 
+**[DONE]** `src/median.c` (a Numerical Recipes Quickselect) is now a thin wrapper around
+GSL's `gsl_stats_float_median()`. Odd-length results are bit-identical to the old code;
+even-length results now interpolate (mean of the two central values).
+
 ### Docstrings, typehints, and ruff
 
 Add these things to at least the python routines python/presto, but especially psr_utils.py, 
@@ -225,6 +229,8 @@ removed too.
 
 - One or two of the .c files (e.g. `amoeba.c` and `median.c`, plus parts of `misc_utils.c`) 
   originate in Numerical Recipes. It would be great to replace those.
+  **[DONE for `amoeba.c`]** replaced by a GSL simplex in `maximize_rz` (commit 8f41787).
+  **[DONE for `median.c`]** now wraps GSL's `gsl_stats_float_median()` (see above).
 - **[DONE]** `solvopt.c` and `apprgrdn.c` were dead — no callers anywhere and not even in
   the meson build (never compiled) — so they were simply removed.
 - Replace the randlib stuff used in `makedata.c` (and elsewhere?) with GSL.

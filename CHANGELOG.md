@@ -1,4 +1,11 @@
 ## Development (unreleased, since v5.3.1):
+ * Replaced the Numerical-Recipes-derived Quickselect in `src/median.c` with a thin
+   wrapper around GSL's `gsl_stats_float_median()` (GSL is already a hard dependency).
+   The `median()` API is unchanged, so all callers and the build files are untouched.
+   Results are bit-identical for odd-length inputs; for even-length inputs the value
+   is now the mean of the two central elements (GSL's interpolation) rather than the
+   lower one — a statistically negligible change in the power-normalization contexts
+   where `median()` is used.
  * `prepfold`'s `.pfd.ps` plots are now converted to anti-aliased `.png` images
    using **Ghostscript** (`gs`) called directly, replacing latex2html's `pstoimg`.
    latex2html is large and, crucially, not available on conda-forge; `pstoimg` was
