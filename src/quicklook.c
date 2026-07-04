@@ -21,9 +21,10 @@ int main(int argc, char *argv[])
     infodata idata;
     struct tms runtimes;
     double ttim, utim, stim, tott;
+    double clk_tck = (double) sysconf(_SC_CLK_TCK);
 
 
-    tott = times(&runtimes) / (double) CLK_TCK;
+    tott = times(&runtimes) / clk_tck;
     if (argc != 3) {
         printf("\nUsage:  'quicklook filename fftfreq dt'\n\n");
         printf("   'filename' = a string containing the FFT file's name.\n");
@@ -104,9 +105,9 @@ int main(int argc, char *argv[])
     printf("z: %.1f to %.1f)\n\n", zlo, zhi);
 
     printf("Timing summary:\n");
-    tott = times(&runtimes) / (double) CLK_TCK - tott;
-    utim = runtimes.tms_utime / (double) CLK_TCK;
-    stim = runtimes.tms_stime / (double) CLK_TCK;
+    tott = times(&runtimes) / clk_tck - tott;
+    utim = runtimes.tms_utime / clk_tck;
+    stim = runtimes.tms_stime / clk_tck;
     ttim = utim + stim;
     printf("    CPU time: %.3f sec (User: %.3f sec, System: %.3f sec)\n",
            ttim, utim, stim);

@@ -4,7 +4,7 @@
 
 #include <time.h>
 #include <sys/times.h>
-#include "clk_tck.h"
+#include <unistd.h>
 #include "misc_utils.h"
 #include "chkio.h"
 #include "ransomfft.h"
@@ -38,6 +38,7 @@ int main(int argc, char *argv[])
     long long numdata = 0, filelen, maxfilelen = 0;
     struct tms runtimes;
     double ttim, stim, utim, tott;
+    double clk_tck = (double) sysconf(_SC_CLK_TCK);
     Cmdline *cmd;
     char datsuffix[] = "dat";
     char outsuffix[] = "fft";
@@ -59,7 +60,7 @@ int main(int argc, char *argv[])
     showOptionValues();
 #endif
 
-    tott = times(&runtimes) / (double) CLK_TCK;
+    tott = times(&runtimes) / clk_tck;
     printf("\n");
     printf("   Real-Valued Data FFT Program v3.0\n");
     printf("        by Scott M. Ransom\n\n");
@@ -255,9 +256,9 @@ int main(int argc, char *argv[])
 
     printf("Finished.\n\n");
     printf("Timing summary:\n");
-    tott = times(&runtimes) / (double) CLK_TCK - tott;
-    utim = runtimes.tms_utime / (double) CLK_TCK;
-    stim = runtimes.tms_stime / (double) CLK_TCK;
+    tott = times(&runtimes) / clk_tck - tott;
+    utim = runtimes.tms_utime / clk_tck;
+    stim = runtimes.tms_stime / clk_tck;
     ttim = utim + stim;
     printf("  CPU usage: %.3f sec total (%.3f sec user, %.3f sec system)\n",
            ttim, utim, stim);

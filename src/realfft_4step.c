@@ -4,7 +4,7 @@
 
 #include <time.h>
 #include <sys/times.h>
-#include "clk_tck.h"
+#include <unistd.h>
 #include "misc_utils.h"
 #include "chkio.h"
 #include "ransomfft.h"
@@ -25,8 +25,9 @@ int main(int argc, char *argv[])
     char command[80];
     struct tms runtimes;
     double ttim, stim, utim, tott;
+    double clk_tck = (double) sysconf(_SC_CLK_TCK);
 
-    tott = times(&runtimes) / (double) CLK_TCK;
+    tott = times(&runtimes) / clk_tck;
     printf("\n\n");
     printf("   Real-Valued Data FFT Program v2.0\n");
     printf("        by Scott M. Ransom\n");
@@ -141,9 +142,9 @@ int main(int argc, char *argv[])
         printf("Finished.\n\n");
 
         printf("Timing summary:\n");
-        tott = times(&runtimes) / (double) CLK_TCK - tott;
-        utim = runtimes.tms_utime / (double) CLK_TCK;
-        stim = runtimes.tms_stime / (double) CLK_TCK;
+        tott = times(&runtimes) / clk_tck - tott;
+        utim = runtimes.tms_utime / clk_tck;
+        stim = runtimes.tms_stime / clk_tck;
         ttim = utim + stim;
         printf("CPU usage: %.3f sec total (%.3f sec user, %.3f sec system)\n",
                ttim, utim, stim);
@@ -182,9 +183,9 @@ int main(int argc, char *argv[])
         /* Output the timing information */
 
         printf("Timing summary:\n");
-        tott = times(&runtimes) / (double) CLK_TCK - tott;
-        utim = runtimes.tms_utime / (double) CLK_TCK;
-        stim = runtimes.tms_stime / (double) CLK_TCK;
+        tott = times(&runtimes) / clk_tck - tott;
+        utim = runtimes.tms_utime / clk_tck;
+        stim = runtimes.tms_stime / clk_tck;
         ttim = utim + stim;
         printf("CPU usage: %.3f sec total (%.3f sec user, %.3f sec system)\n",
                ttim, utim, stim);

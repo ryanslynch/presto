@@ -1,9 +1,9 @@
 #include <sys/times.h>
+#include <unistd.h>
 #include "chkio.h"
 #include <math.h>
 #include <string.h>
 #include <time.h>
-#include "clk_tck.h"
 #include "ransomfft.h"
 #include "meminfo.h"
 #include "vectors.h"

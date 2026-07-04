@@ -538,10 +538,11 @@ static double orbit_trial(fcomplex * data, int datalen,
     int resphw, resplen, numgood, numbetween = 1, ii;
     float powr, ipowr, binr, bini, nextbinr, nextbini;
     double powargr, powargi, interbinfact, tott;
+    double clk_tck = (double) sysconf(_SC_CLK_TCK);
     struct tms runtimes;
     fcomplex *resp;
 
-    tott = times(&runtimes) / (double) CLK_TCK;
+    tott = times(&runtimes) / clk_tck;
     interbinfact = 1.0 / (PIBYTWO * PIBYTWO);
 
     /* Generate the response */
@@ -582,6 +583,6 @@ static double orbit_trial(fcomplex * data, int datalen,
         }
     }
     vect_free(resp);
-    tott = times(&runtimes) / (double) CLK_TCK - tott;
+    tott = times(&runtimes) / clk_tck - tott;
     return tott;
 }

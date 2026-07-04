@@ -177,11 +177,6 @@ makewisdom:
 	./makewisdom
 	cp fftw_wisdom.txt $(PRESTO)/lib
 
-timetest:
-	$(CC) -o $@ timetest.c
-	./timetest
-	rm -f timetest
-
 libpresto: libpresto$(LIBSUFFIX)
 
 libpresto$(LIBSUFFIX): $(PRESTOOBJS)

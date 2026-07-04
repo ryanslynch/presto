@@ -1,9 +1,9 @@
 #include <time.h>
 #include <sys/times.h>
+#include <unistd.h>
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
-#include "clk_tck.h"
 #include "vectors.h"
 #include "fftw3.h"
 #include "assert.h"
@@ -43,6 +43,7 @@ int main(int argc, char *argv[]) {
     fftwf_plan tplan1, tplan2;
     struct tms runtimes;
     double ttim, stim, utim, tott;
+    double clk_tck = (double) sysconf(_SC_CLK_TCK);
     int ii, N, M, numtimes, move_size;
     unsigned char *tmpspace;
 
@@ -66,9 +67,9 @@ int main(int argc, char *argv[]) {
     tmpspace = gen_bvect(move_size);
 
     // Start the timing for TOMs transpose
-    tott = times(&runtimes) / (double) CLK_TCK;
-    utim = runtimes.tms_utime / (double) CLK_TCK;
-    stim = runtimes.tms_stime / (double) CLK_TCK;
+    tott = times(&runtimes) / clk_tck;
+    utim = runtimes.tms_utime / clk_tck;
+    stim = runtimes.tms_stime / clk_tck;
     
     if (N * M <= 20)
         print_array(array1, N, M);
@@ -85,9 +86,9 @@ int main(int argc, char *argv[]) {
             print_array(array1, N, M);
     }
 
-    tott = times(&runtimes) / (double) CLK_TCK - tott;
-    utim = runtimes.tms_utime / (double) CLK_TCK - utim;
-    stim = runtimes.tms_stime / (double) CLK_TCK - stim;
+    tott = times(&runtimes) / clk_tck - tott;
+    utim = runtimes.tms_utime / clk_tck - utim;
+    stim = runtimes.tms_stime / clk_tck - stim;
     ttim = utim + stim;
 
     // Check for correctness
@@ -108,9 +109,9 @@ int main(int argc, char *argv[]) {
     tplan2 = plan_transpose(M, N, array1, array1);
     memcpy(array1, array2, sizeof(float) * N * M);
 
-    tott = times(&runtimes) / (double) CLK_TCK;
-    utim = runtimes.tms_utime / (double) CLK_TCK;
-    stim = runtimes.tms_stime / (double) CLK_TCK;
+    tott = times(&runtimes) / clk_tck;
+    utim = runtimes.tms_utime / clk_tck;
+    stim = runtimes.tms_stime / clk_tck;
 
     if (N * M <= 20)
         print_array(array1, N, M);
@@ -127,9 +128,9 @@ int main(int argc, char *argv[]) {
             print_array(array1, N, M);
     }
 
-    tott = times(&runtimes) / (double) CLK_TCK - tott;
-    utim = runtimes.tms_utime / (double) CLK_TCK - utim;
-    stim = runtimes.tms_stime / (double) CLK_TCK - stim;
+    tott = times(&runtimes) / clk_tck - tott;
+    utim = runtimes.tms_utime / clk_tck - utim;
+    stim = runtimes.tms_stime / clk_tck - stim;
     ttim = utim + stim;
 
     // Check for correctness

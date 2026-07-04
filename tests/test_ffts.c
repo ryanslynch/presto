@@ -5,13 +5,13 @@
 
 #include <time.h>
 #include <sys/times.h>
+#include <unistd.h>
 #include <stdio.h>
 #include <math.h>
 #include "vectors.h"
 #include "ransomfft.h"
 #include "meminfo.h"
 #include "randlib.h"
-#include "clk_tck.h"
 
 #ifndef PI
 #define PI            3.1415926535897932384626433832795028841971693993751
@@ -36,7 +36,8 @@ int main(int argc, char *argv[])
 #endif
   struct tms runtimes;
   double ttim, stim, utim, tott;
-  
+  double clk_tck = (double) sysconf(_SC_CLK_TCK);
+
   if (argc <= 1 || argc > 4) {
     printf("\nUsage:  testffts [sign (1/-1)] [print (0/1)] [frac err tol]\n\n");
     exit(0);
@@ -130,9 +131,9 @@ int main(int argc, char *argv[])
     
     /*  The challenger... */
     
-    tott = times(&runtimes) / (double) CLK_TCK;
-    utim = runtimes.tms_utime / (double) CLK_TCK;
-    stim = runtimes.tms_stime / (double) CLK_TCK;
+    tott = times(&runtimes) / clk_tck;
+    utim = runtimes.tms_utime / clk_tck;
+    stim = runtimes.tms_stime / clk_tck;
 
     tablesixstepfft(ptr1, npts, isign);
     /* tablesixstepfft(plan1, plan2, ptr1, npts, isign); */
@@ -143,10 +144,10 @@ int main(int argc, char *argv[])
     /*  realfft(ptr1, n, isign);             */
     /*  fftw(plan, 1, in, 1, 0, out, 1, 0);  */
     
-    tott = times(&runtimes) / (double) CLK_TCK - tott;
+    tott = times(&runtimes) / clk_tck - tott;
     printf("Timing summary (Ransom)  npts = %ld:\n", npts);
-    utim = runtimes.tms_utime / (double) CLK_TCK - utim;
-    stim = runtimes.tms_stime / (double) CLK_TCK - stim;
+    utim = runtimes.tms_utime / clk_tck - utim;
+    stim = runtimes.tms_stime / clk_tck - stim;
     ttim = utim + stim;
     printf("CPU usage: %.3f sec total (%.3f sec user, %.3f sec system)\n", \
 	   ttim, utim, stim);
@@ -166,9 +167,9 @@ int main(int argc, char *argv[])
                                            FFTW_IN_PLACE);
 #endif
 
-    tott = times(&runtimes) / (double) CLK_TCK;
-    utim = runtimes.tms_utime / (double) CLK_TCK;
-    stim = runtimes.tms_stime / (double) CLK_TCK;
+    tott = times(&runtimes) / clk_tck;
+    utim = runtimes.tms_utime / clk_tck;
+    stim = runtimes.tms_stime / clk_tck;
 
     /*  four1(ptr2 - 1, npts, isign);        */
     /*  tablefft(ptr2, npts, isign);         */
@@ -185,10 +186,10 @@ int main(int argc, char *argv[])
     }
 #endif
 
-    tott = times(&runtimes) / (double) CLK_TCK - tott;
+    tott = times(&runtimes) / clk_tck - tott;
     printf("Timing summary (FFTW)  npts = %ld:\n", npts);
-    utim = runtimes.tms_utime / (double) CLK_TCK - utim;
-    stim = runtimes.tms_stime / (double) CLK_TCK - stim;
+    utim = runtimes.tms_utime / clk_tck - utim;
+    stim = runtimes.tms_stime / clk_tck - stim;
     ttim = utim + stim;
     printf("CPU usage: %.3f sec total (%.3f sec user, %.3f sec system)\n", \
 	   ttim, utim, stim);

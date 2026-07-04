@@ -36,12 +36,13 @@ int main(int argc, char *argv[])
     infodata idata;
     struct tms runtimes;
     double ttim, utim, stim, tott;
+    double clk_tck = (double) sysconf(_SC_CLK_TCK);
     Cmdline *cmd;
     fftwf_plan fftplan;
 
     /* Prep the timer */
 
-    tott = times(&runtimes) / (double) CLK_TCK;
+    tott = times(&runtimes) / clk_tck;
 
     /* Call usage() if we have no command line arguments */
 
@@ -347,9 +348,9 @@ int main(int argc, char *argv[])
     printf("Searched %.0f pts (including interbins).\n\n", totnumsearched);
 
     printf("Timing summary:\n");
-    tott = times(&runtimes) / (double) CLK_TCK - tott;
-    utim = runtimes.tms_utime / (double) CLK_TCK;
-    stim = runtimes.tms_stime / (double) CLK_TCK;
+    tott = times(&runtimes) / clk_tck - tott;
+    utim = runtimes.tms_utime / clk_tck;
+    stim = runtimes.tms_stime / clk_tck;
     ttim = utim + stim;
     printf("    CPU time: %.3f sec (User: %.3f sec, System: %.3f sec)\n",
            ttim, utim, stim);
