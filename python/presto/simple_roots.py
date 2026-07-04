@@ -105,12 +105,12 @@ def newton_raphson(func, dfunc, lox, hix, TOL=1.0e-14):
 
 if __name__ == '__main__':
 
-    from numpy.core.umath import pi, sin, cos
+    import numpy as np
 
     def func(x):
-        return sin(x) - x + pi/4.0
+        return np.sin(x) - x + np.pi/4.0
     def dfunc(x):
-        return cos(x) - 1
+        return np.cos(x) - 1
     
     nr = newton_raphson(func, dfunc, 0.0, 3.0)
     s = secant(func, 0.0, 3.0)
