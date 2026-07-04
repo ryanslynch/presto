@@ -1,29 +1,46 @@
-from builtins import input
-from builtins import range
-from .prestoswig import *
+from __future__ import annotations
+
 import os.path
+
 import numpy as np
+
+from .prestoswig import *  # noqa: F401,F403  (SWIG-generated C symbols)
 from presto import Pgplot
 from presto import psr_utils
 
 
-def val_with_err(value, error, length=0, digits=2, latex=0):
+def val_with_err(
+    value: float, error: float, length: int = 0, digits: int = 2, latex: int = 0
+) -> str:
     """
-    val_with_err(value, error, length=0, digits=2):
-        Returns a string of length length (auto if 0) with 'value'
-            rounded to the appropriate decimal place and the
-            'error' in parenthesis as in scientific journals.
-            The error has 'digits' decimal places.    
-        Notes:
-           'length' should be ~20 to show full double precision          
-                if the base 10 exponent of the error needs to be shown.       
-            If length == 0, left-justified minimum length string is returned.
-            If length > 0, the string returned is right justified.       
-            If length < 0, the string returned is left justified.       
-            If latex=1, the string is converted into LaTeX markup.
+    Format a value and its error as in scientific journals.
+
+    Returns a string with `value` rounded to the appropriate decimal place
+    and `error` in parentheses (with `digits` decimal places).
+
+    Parameters
+    ----------
+    value : float
+        The value to format.
+    error : float
+        The uncertainty on `value`.
+    length : int, optional
+        The length of the returned string (auto if 0). Should be ~20 to show
+        full double precision if the base-10 exponent of the error needs to
+        be shown. If 0, a left-justified minimum-length string is returned;
+        if > 0, the string is right-justified; if < 0, it is left-justified.
+    digits : int, optional
+        The number of decimal places on the error (default 2).
+    latex : int, optional
+        If nonzero, convert the string to LaTeX markup (default 0).
+
+    Returns
+    -------
+    str
+        The formatted ``value(error)`` string.
     """
     slen = 40
-    outstr = ' ' * slen
+    outstr = " " * slen
     if abs(length) > slen:
         slen = abs(length)
     if digits == 2:
@@ -32,47 +49,78 @@ def val_with_err(value, error, length=0, digits=2, latex=0):
         slen = nice_output_1(outstr, value, error, length)
     outstr = outstr[:slen].strip()  # remove null termination and any space
     if length < 0:
-        outstr = outstr + (20 - len(outstr)) * ' '
+        outstr = outstr + (20 - len(outstr)) * " "
     if length > 0:
-        outstr = (20 - len(outstr)) * ' ' + outstr
+        outstr = (20 - len(outstr)) * " " + outstr
     if latex:
         if outstr.find("x10") > 0:
             outstr = outstr.replace("x10^", r"$\times$10$^{") + "}$"
     return outstr
 
 
-def read_inffile(filename, verbose=True):
+def read_inffile(filename: str, verbose: bool = True) -> "infodata":
     """
-    read_inffile(filename, verbose=True):
-        Return an infodata 'C' structure containing the data from the
-           'inf' file in 'filename'.
+    Read a PRESTO ``.inf`` file into an ``infodata`` C structure.
+
+    Parameters
+    ----------
+    filename : str
+        The ``.inf`` filename (a trailing ``.inf`` is optional).
+    verbose : bool, optional
+        If True, print what is being read (default True).
+
+    Returns
+    -------
+    infodata
+        The C ``infodata`` structure holding the file's contents.
     """
     fname = filename[:-4] if (filename[-4:] == ".inf") else filename
     id = infodata()
     if verbose:
-        print("Reading information from", "\"" + fname + ".inf\"")
+        print("Reading information from", '"' + fname + '.inf"')
     readinf(id, fname)
     return id
 
 
-def write_inffile(infodata, verbose=True):
+def write_inffile(infodata, verbose: bool = True) -> None:
     """
-    wite_inffile(infodata, verbose=True):
-        Write an '.inf' file based on its input structure
+    Write a PRESTO ``.inf`` file from an ``infodata`` C structure.
+
+    Parameters
+    ----------
+    infodata : infodata
+        The C ``infodata`` structure to write out.
+    verbose : bool, optional
+        If True, print the file being written (default True).
+
+    Returns
+    -------
+    None
     """
     if verbose:
         print("Writing .inf file to '%s.inf'" % infodata.name)
     writeinf(infodata)
 
 
-def psrepoch(psrname, epoch, verbose=True):
+def psrepoch(psrname: str, epoch: float, verbose: bool = True) -> "psrparams":
     """
-    psrepoch(psrname or parname, epoch):
-        Return a psrparams 'C' structure which includes data for
-            PSR 'psrname' (a string of the B1950 or J2000 name of the
-            pulsar -- without PSR, J, or B included) at epoch 'epoch'
-            (in MJD format) from the ATNF database, or, a parfile is
-            passed, read the pulsar information from it instead.
+    Return a ``psrparams`` C structure for a pulsar at a given epoch.
+
+    Parameters
+    ----------
+    psrname : str
+        The B1950 or J2000 name of the pulsar (without a leading PSR, J, or
+        B), which is looked up in the ATNF database; or the path to a
+        parfile, from which the pulsar information is read instead.
+    epoch : float
+        The epoch in MJD format.
+    verbose : bool, optional
+        If True, print what was retrieved (default True).
+
+    Returns
+    -------
+    psrparams
+        The C ``psrparams`` structure for the pulsar at `epoch`.
     """
     pp = psrparams()
     if os.path.isfile(psrname):
@@ -82,65 +130,101 @@ def psrepoch(psrname, epoch, verbose=True):
     else:
         num = get_psr_at_epoch(psrname, epoch, pp)
         if verbose:
-            print('Retrieved data at MJD %f for %s' % (epoch, pp.jname))
-            print('The pulsar was #%d in the database.' % num)
+            print("Retrieved data at MJD %f for %s" % (epoch, pp.jname))
+            print("The pulsar was #%d in the database." % num)
     return pp
 
 
-def read_rzwcands(filename):
+def read_rzwcands(filename: str) -> list:
     """
-    read_rzwcands(filename):
-        Return a list of all of the rzw search candidates from
-        the file 'filename'.
+    Read all of the rzw search candidates from a file.
+
+    Parameters
+    ----------
+    filename : str
+        The candidate file to read.
+
+    Returns
+    -------
+    list of fourierprops
+        The rzw search candidates.
     """
     infile = open(filename, "r")
     cands = []
     nextcand = fourierprops()
-    while (read_rzw_cand(infile, nextcand)):
+    while read_rzw_cand(infile, nextcand):
         cands.append(nextcand)
         nextcand = fourierprops()
     infile.close()
     return cands
 
 
-def read_rawbincands(filename):
+def read_rawbincands(filename: str) -> list:
     """
-    read_rawbincands(filename):
-        Return a list of all of the raw binary search candidates
-            from the file 'filename'.
+    Read all of the raw binary search candidates from a file.
+
+    Parameters
+    ----------
+    filename : str
+        The candidate file to read.
+
+    Returns
+    -------
+    list of rawbincand
+        The raw binary search candidates.
     """
     infile = open(filename, "r")
     cands = []
     nextcand = rawbincand()
-    while (read_rawbin_cand(infile, nextcand)):
+    while read_rawbin_cand(infile, nextcand):
         cands.append(nextcand)
         nextcand = rawbincand()
     infile.close()
     return cands
 
 
-def next2_to_n(x):
+def next2_to_n(x: float) -> int:
     """
-    next2_to_n(x):
-        Return the first value of 2^n >= x.
+    Return the smallest power of two that is >= `x`.
+
+    Parameters
+    ----------
+    x : float
+        The value to round up to a power of two.
+
+    Returns
+    -------
+    int
+        The first ``2**n`` that is >= `x`.
     """
     i = 1
-    while (i < x): i = i << 1
+    while i < x:
+        i = i << 1
     return i
 
 
-def rfft(data, sign=-1):
+def rfft(data: np.ndarray, sign: int = -1) -> np.ndarray:
     """
-    rfft(data, sign=-1):
-        Return the FFT of the real-valued, 32-bit floating point 'data'
-        Note:  This only returns the positive frequency half of the FFT,
-            since the other half is symmetric.  The Nyquist frequency
-            is stored in the complex part of frequency 0 as per
-            Numerical Recipes.
-        The optional value 'sign' should be -1 (forward) or +1 (inverse).
+    Return the FFT of real-valued, 32-bit floating point data.
+
+    Only the positive-frequency half of the FFT is returned, since the other
+    half is symmetric. The Nyquist frequency is stored in the imaginary part
+    of frequency 0 as per Numerical Recipes.
+
+    Parameters
+    ----------
+    data : numpy.ndarray
+        The real-valued input data (forward) or complex data (inverse).
+    sign : int, optional
+        -1 for a forward transform (default), +1 for an inverse transform.
+
+    Returns
+    -------
+    numpy.ndarray
+        The (complex, for a forward transform) FFT of `data`.
     """
     # Default to sign = -1 if the user gives a bad value
-    if (sign == -1 or sign != 1):
+    if sign == -1 or sign != 1:
         tmp = np.array(data, copy=1).astype(np.float32)
         realfft(tmp, -1)
         return tmp.view(np.complex64)
@@ -150,44 +234,89 @@ def rfft(data, sign=-1):
         return tmp.view(np.float32)
 
 
-def spectralpower(fftarray):
+def spectralpower(fftarray: np.ndarray) -> np.ndarray:
     """
-    spectralpower(fftarray):
-        Return the power spectrum of a complex FFT 'fftarray'.
+    Return the power spectrum of a complex FFT.
+
+    Parameters
+    ----------
+    fftarray : numpy.ndarray
+        A complex FFT.
+
+    Returns
+    -------
+    numpy.ndarray
+        The power spectrum.
     """
     return power_arr(np.asarray(fftarray).astype(np.complex64))
 
 
-def spectralphase(fftarray):
+def spectralphase(fftarray: np.ndarray) -> np.ndarray:
     """
-    spectralphase(fftarray):
-        Return the spectral phase (deg) of a complex FFT 'fftarray'.
+    Return the spectral phase (in degrees) of a complex FFT.
+
+    Parameters
+    ----------
+    fftarray : numpy.ndarray
+        A complex FFT.
+
+    Returns
+    -------
+    numpy.ndarray
+        The spectral phase in degrees.
     """
     return phase_arr(np.asarray(fftarray).astype(np.complex64))
 
 
-def rzw_response(roffset, z, w, numbetween=1, numkern=None):
+def rzw_response(
+    roffset: float, z: float, w: float, numbetween: int = 1, numkern: int | None = None
+) -> np.ndarray:
     """
-    rzw_response(roffset, z, w, numbetween=1, numkern=None):
-        Return the response of a signal offset from a Fourier bin
-            by roffset bins, with a Fourier f-dot of z, and a
-            Fourier f-dotdot of w.  The Fourier interpolation
-            factor is the integer numbetween, and the the length
-            of the resulting kernel will be auto-determined if
-            numkern is None.
+    Return the response of a signal offset from a Fourier bin.
+
+    Parameters
+    ----------
+    roffset : float
+        The signal's offset from a Fourier bin, in bins.
+    z : float
+        The Fourier f-dot.
+    w : float
+        The Fourier f-dotdot.
+    numbetween : int, optional
+        The Fourier interpolation factor (default 1).
+    numkern : int, optional
+        The length of the resulting kernel. If None (default), it is
+        auto-determined.
+
+    Returns
+    -------
+    numpy.ndarray
+        The complex response kernel.
     """
     if numkern is None:
         numkern = w_resp_halfwidth(z, w, LOWACC)
     return gen_w_response(roffset, numbetween, numkern, z, w)
 
 
-def maximize_r(data, r, norm=None):
+def maximize_r(data: np.ndarray, r: float, norm: float | None = None) -> list:
     """
-    maximize_r(data, r, norm = None):
-        Optimize the detection of a signal at Fourier frequency 'r' in
-            a FFT 'data'.  The routine returns a list containing
-            the optimized values of the maximum normalized power, rmax,
-            and an rderivs structure for the peak.
+    Optimize the detection of a signal at Fourier frequency `r` in an FFT.
+
+    Parameters
+    ----------
+    data : numpy.ndarray
+        The input FFT.
+    r : float
+        The Fourier frequency at which to optimize.
+    norm : float, optional
+        The normalization to divide the power by. If None (default), the
+        local power (``rderivs.locpow``) is used.
+
+    Returns
+    -------
+    list
+        ``[maxpow, rmax, rderivs]``: the maximum normalized power, the
+        optimized frequency, and the ``rderivs`` structure for the peak.
     """
     rd = rderivs()
     (rmax, maxpow) = max_r_arr(data, r, rd)
@@ -195,13 +324,30 @@ def maximize_r(data, r, norm=None):
     return [maxpow, rmax, rd]
 
 
-def maximize_rz(data, r, z, norm=None):
+def maximize_rz(
+    data: np.ndarray, r: float, z: float, norm: float | None = None
+) -> list:
     """
-    maximize_rz(data, r, z, norm = None):
-        Optimize the detection of a signal at location 'r', 'z' in
-            the F-Fdot plane.  The routine returns a list containing
-            the optimized values of the maximum normalized power, rmax,
-            zmax, and an rderivs structure for the peak.
+    Optimize the detection of a signal at `r`, `z` in the F-Fdot plane.
+
+    Parameters
+    ----------
+    data : numpy.ndarray
+        The input FFT.
+    r : float
+        The Fourier frequency at which to optimize.
+    z : float
+        The Fourier f-dot at which to optimize.
+    norm : float, optional
+        The normalization to divide the power by. If None (default), the
+        local power (``rderivs.locpow``) is used.
+
+    Returns
+    -------
+    list
+        ``[maxpow, rmax, zmax, rderivs]``: the maximum normalized power, the
+        optimized frequency and f-dot, and the ``rderivs`` structure for the
+        peak.
     """
     rd = rderivs()
     (rmax, zmax, maxpow) = max_rz_arr(data, r, z, rd)
@@ -209,14 +355,32 @@ def maximize_rz(data, r, z, norm=None):
     return [maxpow, rmax, zmax, rd]
 
 
-def maximize_rz_harmonics(data, r, z, numharm, norm=None):
+def maximize_rz_harmonics(
+    data: np.ndarray, r: float, z: float, numharm: int, norm: float | None = None
+) -> list:
     """
-    maximize_rz_harmonics(data, r, z, numharm, norm = None):
-        Optimize the detection of a signal at location 'r', 'z' in
-            the F-Fdot plane, including harmonic summing of the harmonics.
-            The routine returns a list containing the optimized values of 
-            the maximum normalized power, rmax, zmax, and a list of 
-            rderivs structures for the peak.
+    Optimize a signal at `r`, `z` in the F-Fdot plane, summing harmonics.
+
+    Parameters
+    ----------
+    data : numpy.ndarray
+        The input FFT.
+    r : float
+        The Fourier frequency at which to optimize.
+    z : float
+        The Fourier f-dot at which to optimize.
+    numharm : int
+        The number of harmonics to sum.
+    norm : float, optional
+        The normalization to divide each harmonic's power by. If None
+        (default), each harmonic's local power is used.
+
+    Returns
+    -------
+    list
+        ``[maxpow, rmax, zmax, rds]``: the maximum summed normalized power,
+        the optimized frequency and f-dot, and a list of ``rderivs``
+        structures (one per harmonic).
     """
     rds = [rderivs() for ii in range(numharm)]
     derivdata = np.zeros(7 * numharm, dtype=np.float64)
@@ -234,13 +398,32 @@ def maximize_rz_harmonics(data, r, z, numharm, norm=None):
     return [maxpow, rmax, zmax, rds]
 
 
-def maximize_rzw(data, r, z, w, norm=None):
+def maximize_rzw(
+    data: np.ndarray, r: float, z: float, w: float, norm: float | None = None
+) -> list:
     """
-    maximize_rzw(data, r, z, w, norm = None):
-        Optimize the detection of a signal at location 'r', 'z', 'w' in
-            the F-Fdot-Fdotdot plane.  The routine returns a list containing
-            the optimized values of the maximum normalized power, rmax,
-            zmax, wmax, and an rderivs structure for the peak.
+    Optimize a signal at `r`, `z`, `w` in the F-Fdot-Fdotdot plane.
+
+    Parameters
+    ----------
+    data : numpy.ndarray
+        The input FFT.
+    r : float
+        The Fourier frequency at which to optimize.
+    z : float
+        The Fourier f-dot at which to optimize.
+    w : float
+        The Fourier f-dotdot at which to optimize.
+    norm : float, optional
+        The normalization to divide the power by. If None (default), the
+        local power (``rderivs.locpow``) is used.
+
+    Returns
+    -------
+    list
+        ``[maxpow, rmax, zmax, wmax, rderivs]``: the maximum normalized
+        power, the optimized frequency, f-dot, and f-dotdot, and the
+        ``rderivs`` structure for the peak.
     """
     rd = rderivs()
     (rmax, zmax, wmax, maxpow) = max_rzw_arr(data, r, z, w, rd)
@@ -248,14 +431,39 @@ def maximize_rzw(data, r, z, w, norm=None):
     return [maxpow, rmax, zmax, wmax, rd]
 
 
-def maximize_rzw_harmonics(data, r, z, w, numharm, norm=None):
+def maximize_rzw_harmonics(
+    data: np.ndarray,
+    r: float,
+    z: float,
+    w: float,
+    numharm: int,
+    norm: float | None = None,
+) -> list:
     """
-    maximize_rzw_harmonics(data, r, z, w, numharm, norm = None):
-        Optimize the detection of a signal at location 'r', 'z', 'w' in
-            the F-Fd-Fdd volume, including harmonic summing of the harmonics.
-            The routine returns a list containing the optimized values of 
-            the maximum normalized power, rmax, zmax, wmax, and a list of 
-            rderivs structures for the peak.
+    Optimize a signal at `r`, `z`, `w` in the F-Fd-Fdd volume, summing harmonics.
+
+    Parameters
+    ----------
+    data : numpy.ndarray
+        The input FFT.
+    r : float
+        The Fourier frequency at which to optimize.
+    z : float
+        The Fourier f-dot at which to optimize.
+    w : float
+        The Fourier f-dotdot at which to optimize.
+    numharm : int
+        The number of harmonics to sum.
+    norm : float, optional
+        The normalization to divide each harmonic's power by. If None
+        (default), each harmonic's local power is used.
+
+    Returns
+    -------
+    list
+        ``[maxpow, rmax, zmax, wmax, rds]``: the maximum summed normalized
+        power, the optimized frequency, f-dot, and f-dotdot, and a list of
+        ``rderivs`` structures (one per harmonic).
     """
     rds = [rderivs() for ii in range(numharm)]
     derivdata = np.zeros(7 * numharm, dtype=np.float64)
@@ -273,17 +481,30 @@ def maximize_rzw_harmonics(data, r, z, w, numharm, norm=None):
     return [maxpow, rmax, zmax, wmax, rds]
 
 
-def search_fft(data, numcands, norm='default'):
+def search_fft(data: np.ndarray, numcands: int, norm: float | str = "default") -> list:
     """
-    search_fft(data, numcands):
-        Search a short FFT and return a list containing the powers and
-        Fourier frequencies of the 'numcands' highest candidates in 'data'.
-        'norm' is the value to multiply each pow power by to get
-             a normalized power spectrum (defaults to  1.0/(Freq 0) value)
+    Search a short FFT for its highest candidates.
+
+    Parameters
+    ----------
+    data : numpy.ndarray
+        The input FFT.
+    numcands : int
+        The number of highest candidates to return.
+    norm : float or str, optional
+        The value to multiply each power by to normalize the power spectrum.
+        Defaults to ``1.0 / (frequency-0 value)``.
+
+    Returns
+    -------
+    list
+        A list of ``[power, frequency]`` pairs for the `numcands` highest
+        candidates.
     """
-    if (norm == 'default'): norm = 1.0 / data[0].real
-    hp = np.zeros(numcands, 'f')
-    hf = np.zeros(numcands, 'f')
+    if norm == "default":
+        norm = 1.0 / data[0].real
+    hp = np.zeros(numcands, "f")
+    hf = np.zeros(numcands, "f")
     search_minifft(data, len(data), norm, numcands, hp, hf)
     cands = []
     for i in range(numcands):
@@ -291,17 +512,44 @@ def search_fft(data, numcands, norm='default'):
     return cands
 
 
-def ffdot_plane(data, lor, dr, numr, loz, dz, numz):
+def ffdot_plane(
+    data: np.ndarray,
+    lor: int,
+    dr: float,
+    numr: int,
+    loz: float,
+    dz: float,
+    numz: int,
+) -> np.ndarray:
     """
-    ffdot_plane(data, lor, dr, numr, loz, dz, numz):
-         Generate an F-Fdot plane with the 'lower-left' corners
-         at the point 'lor', 'loz'.  The plane will have 'numr' frequency
-         bins and 'numz' slices in the fdot direction, separated by 'dr'
-         and 'dz' respectively.  'lor', 'numr', and 'numz' should all be
-         integers.  'data' is the input FFT.
-         Note:  'dr' much be the reciprocal of an integer
-              (i.e. 1 / numbetween).  Also, 'r' is considered to be
-              the average frequency (r = ro + z / 2).
+    Generate an F-Fdot plane with its lower-left corner at `lor`, `loz`.
+
+    Parameters
+    ----------
+    data : numpy.ndarray
+        The input FFT.
+    lor : int
+        The lowest Fourier frequency (bins) of the plane.
+    dr : float
+        The frequency step, which must be the reciprocal of an integer
+        (``1 / numbetween``).
+    numr : int
+        The number of frequency bins.
+    loz : float
+        The lowest Fourier f-dot of the plane.
+    dz : float
+        The f-dot step.
+    numz : int
+        The number of f-dot slices.
+
+    Returns
+    -------
+    numpy.ndarray
+        The complex F-Fdot plane.
+
+    Notes
+    -----
+    ``r`` is considered to be the average frequency (``r = r0 + z / 2``).
     """
     lor = int(lor)
     numr = int(numr)
@@ -311,23 +559,58 @@ def ffdot_plane(data, lor, dr, numr, loz, dz, numz):
     maxabsz = max(abs(loz), abs(hiz))
     kern_half_width = z_resp_halfwidth(maxabsz, LOWACC)
     fftlen = next2_to_n(numr + 2 * numbetween * kern_half_width)
-    ffd = corr_rz_plane(data, numbetween, lor, loz, hiz,
-                        numz, fftlen, LOWACC)
+    ffd = corr_rz_plane(data, numbetween, lor, loz, hiz, numz, fftlen, LOWACC)
     return np.array(ffd[:, 0:numr], copy=1)
 
 
-def fdotdot_vol(data, lor, dr, numr, loz, dz, numz, low, dw, numw):
+def fdotdot_vol(
+    data: np.ndarray,
+    lor: int,
+    dr: float,
+    numr: int,
+    loz: float,
+    dz: float,
+    numz: int,
+    low: float,
+    dw: float,
+    numw: int,
+) -> np.ndarray:
     """
-    fdotdot_vol(data, lor, dr, numr, loz, dz, numz, low, dw, numw):
-         Generate an F-Fdot-Fdotdot volume with the 'lower-left' corners
-         at the point 'lor', 'loz', 'low'.  The vol will have 'numr' frequency
-         bins, 'numz'/'numw' slices in the fdot/fdotdot direction, separated 
-         by 'dr', 'dz', and 'dw' respectively.  'lor', 'numr', 'numz', and 
-         'numw' should all be integers.  'data' is the input FFT.
-         Note:  'dr' much be the reciprocal of an integer
-              (i.e. 1 / numbetween).  Also, 'r' is considered to be
-              the average frequency (r = r0 + w/6 + z0/2), and 'z'
-              is the average fdot (z = z0 + w / 2).
+    Generate an F-Fdot-Fdotdot volume with its corner at `lor`, `loz`, `low`.
+
+    Parameters
+    ----------
+    data : numpy.ndarray
+        The input FFT.
+    lor : int
+        The lowest Fourier frequency (bins) of the volume.
+    dr : float
+        The frequency step, which must be the reciprocal of an integer
+        (``1 / numbetween``).
+    numr : int
+        The number of frequency bins.
+    loz : float
+        The lowest Fourier f-dot of the volume.
+    dz : float
+        The f-dot step.
+    numz : int
+        The number of f-dot slices.
+    low : float
+        The lowest Fourier f-dotdot of the volume.
+    dw : float
+        The f-dotdot step.
+    numw : int
+        The number of f-dotdot slices.
+
+    Returns
+    -------
+    numpy.ndarray
+        The complex F-Fdot-Fdotdot volume.
+
+    Notes
+    -----
+    ``r`` is the average frequency (``r = r0 + w/6 + z0/2``) and ``z`` is the
+    average f-dot (``z = z0 + w / 2``).
     """
     lor = int(lor)
     numr, numz, numw = int(numr), int(numz), int(numw)
@@ -338,23 +621,34 @@ def fdotdot_vol(data, lor, dr, numr, loz, dz, numz, low, dw, numw):
     maxabsw = max(abs(low), abs(hiw))
     kern_half_width = w_resp_halfwidth(maxabsz, maxabsw, LOWACC)
     fftlen = next2_to_n(numr + 2 * numbetween * kern_half_width)
-    ffd = corr_rzw_vol(data, numbetween, lor, loz, hiz,
-                       numz, low, hiw, numw, fftlen, LOWACC)
+    ffd = corr_rzw_vol(
+        data, numbetween, lor, loz, hiz, numz, low, hiw, numw, fftlen, LOWACC
+    )
     return np.array(ffd[:, :, 0:numr], copy=1)
 
 
-def estimate_rz(psr, T, show=0, device='/XWIN'):
+def estimate_rz(psr, T: float, show: int = 0, device: str = "/XWIN") -> tuple:
     """
-    estimate_rz(psr, T, show=0, device='/XWIN'):
-        Return estimates of a pulsar's average Fourier freq ('r')
-        relative to its nominal Fourier freq as well as its
-        Fourier f-dot ('z') in bins, of a pulsar.
-           'psr' is a psrparams structure describing the pulsar.
-           'T' is the length of the observation in sec.
-           'show' if true, displays plots of 'r' and 'z'.
-           'device' if the device to plot to if 'show' is true.
+    Estimate a pulsar's average Fourier frequency and f-dot.
+
+    Parameters
+    ----------
+    psr : psrparams
+        The ``psrparams`` structure describing the pulsar.
+    T : float
+        The length of the observation in sec.
+    show : int, optional
+        If nonzero, display plots of ``r`` and ``z`` (default 0).
+    device : str, optional
+        The PGPLOT device to plot to if `show` is nonzero (default "/XWIN").
+
+    Returns
+    -------
+    tuple of float
+        ``(r, z)``: the average Fourier frequency (relative to the nominal
+        Fourier frequency) and the average Fourier f-dot, both in bins.
     """
-    startE = keplers_eqn(psr.orb.t, psr.orb.p, psr.orb.e, 1.0E-15)
+    startE = keplers_eqn(psr.orb.t, psr.orb.p, psr.orb.e, 1.0e-15)
     numorbpts = int(T / psr.orb.p + 1.0) * 1024 + 1
     dt = T / (numorbpts - 1)
     E = dorbint(startE, numorbpts, dt, psr.orb)
@@ -362,41 +656,93 @@ def estimate_rz(psr, T, show=0, device='/XWIN'):
     r = T / p_from_e(E, psr) - T / psr.p
     if show:
         times = np.arange(numorbpts) * dt
-        Pgplot.plotxy(r, times, labx='Time', \
-                      laby='Fourier Frequency (r)', device=device)
-        if device == '/XWIN':
-            print('Press enter to continue:')
-            try:
-                i = raw_input()
-            except NameError:
-                i = input()
+        Pgplot.plotxy(
+            r, times, labx="Time", laby="Fourier Frequency (r)", device=device
+        )
+        if device == "/XWIN":
+            print("Press enter to continue:")
+            input()
         Pgplot.nextplotpage()
-        Pgplot.plotxy(z, times, labx='Time',
-                      laby='Fourier Frequency Derivative (z)', device=device)
+        Pgplot.plotxy(
+            z,
+            times,
+            labx="Time",
+            laby="Fourier Frequency Derivative (z)",
+            device=device,
+        )
         Pgplot.closeplot()
     return r.mean(), z.mean()
 
 
-def alias(r, rny):
+def alias(r: float, rny: float) -> float:
     """
-    alias_to_r(r, rny):
-        Convert an aliased Fourier frequency into the 'true' Fourier
-        frequency of a signal.  Or vise-versa -- the transformation is
-        symmetric about the Nyquist Freq.
-           'r' is the signal's Fourier frequency to convert.
-           'rny' is the Nyquist frequency (in bins).  For an FFT
-              of real data, 'rny' = number of data points FFT'd / 2.
+    Convert between an aliased and the 'true' Fourier frequency of a signal.
+
+    The transformation is symmetric about the Nyquist frequency, so it
+    converts either direction.
+
+    Parameters
+    ----------
+    r : float
+        The signal's Fourier frequency to convert.
+    rny : float
+        The Nyquist frequency in bins. For an FFT of real data, this is the
+        number of data points FFT'd divided by 2.
+
+    Returns
+    -------
+    float
+        The converted Fourier frequency.
     """
     return 2.0 * rny - r
 
 
-def show_ffdot_plane(data, r, z, dr=0.125, dz=0.5,
-                     numr=300, numz=300, T=None,
-                     contours=None, title=None,
-                     image="astro", device="/XWIN", norm=1.0):
+def show_ffdot_plane(
+    data,
+    r,
+    z,
+    dr=0.125,
+    dz=0.5,
+    numr=300,
+    numz=300,
+    T=None,
+    contours=None,
+    title=None,
+    image="astro",
+    device="/XWIN",
+    norm=1.0,
+):
     """
-    show_ffdot_plane(data, r, z):
-        Show a color plot of the F-Fdot plane centered on the point 'r', 'z'.
+    Show a color plot of the F-Fdot plane centered on `r`, `z`.
+
+    Parameters
+    ----------
+    data : numpy.ndarray
+        The input FFT.
+    r : float
+        The Fourier frequency at the center of the plot.
+    z : float
+        The Fourier f-dot at the center of the plot.
+    dr, dz : float, optional
+        The frequency and f-dot steps (defaults 0.125 and 0.5).
+    numr, numz : int, optional
+        The number of frequency bins and f-dot slices (defaults 300, 300).
+    T : float, optional
+        The observation length in sec. If given, axes are labeled in Hz.
+    contours : optional
+        Contour levels to overplot.
+    title : str, optional
+        The plot title.
+    image : str, optional
+        The image color map (default "astro").
+    device : str, optional
+        The PGPLOT device (default "/XWIN").
+    norm : float, optional
+        The power normalization (default 1.0).
+
+    Returns
+    -------
+    None
     """
     ffdp = ffdot_plane(data, r, dr, numr, z, dz, numz)
     ffdpow = spectralpower(ffdp.ravel())
@@ -407,36 +753,63 @@ def show_ffdot_plane(data, r, z, dr=0.125, dz=0.5,
     y = np.arange(numz, dtype="d") * dz + startz
     highpt = np.argmax(ffdpow.ravel())
     hir = highpt % numr
-    hiz = highpt / numr
+    hiz = highpt // numr
     print("")
     print("Fourier Freqs from ", min(x), "to", max(x), ".")
     print("Fourier Fdots from ", min(y), "to", max(y), ".")
     print("Maximum normalized power is ", ffdpow[hiz][hir])
-    print("The max value is located at:  r =", startbin + hir * dr, \
-          "  z =", startz + hiz * dz)
+    print(
+        "The max value is located at:  r =",
+        startbin + hir * dr,
+        "  z =",
+        startz + hiz * dz,
+    )
     print("")
     if not T:
-        Pgplot.plot2d(ffdpow, x, y, labx="Fourier Frequency (bins)", \
-                      laby="Fourier Frequency Derivative", \
-                      title=title, image=image, \
-                      contours=contours, device=device)
+        Pgplot.plot2d(
+            ffdpow,
+            x,
+            y,
+            labx="Fourier Frequency (bins)",
+            laby="Fourier Frequency Derivative",
+            title=title,
+            image=image,
+            contours=contours,
+            device=device,
+        )
     else:
-        Pgplot.plot2d(ffdpow, x / T, y / (T ** 2.0), labx="Frequency (hz)", \
-                      laby="Frequency Derivative (Hz/sec)", \
-                      rangex2=[x[0], x[-1]], rangey2=[y[0], y[-1]], \
-                      labx2="Fourier Frequency", \
-                      laby2="Fourier Frequency Derivative", \
-                      title=title, image=image, \
-                      contours=contours, device=device)
+        Pgplot.plot2d(
+            ffdpow,
+            x / T,
+            y / (T**2.0),
+            labx="Frequency (hz)",
+            laby="Frequency Derivative (Hz/sec)",
+            rangex2=[x[0], x[-1]],
+            rangey2=[y[0], y[-1]],
+            labx2="Fourier Frequency",
+            laby2="Fourier Frequency Derivative",
+            title=title,
+            image=image,
+            contours=contours,
+            device=device,
+        )
 
 
-def v_from_e(e, psr):
+def v_from_e(e: np.ndarray, psr) -> np.ndarray:
     """
-    v_from_e(e, psr):
-        Return a vector of velocities (km/s) from a vector of Eccentric
-        anomalys.
-            'e' is the vector of Eccentric anomalys.
-            'psr' is a psrparams instance containing info about the pulsar.
+    Return velocities from a vector of eccentric anomalies.
+
+    Parameters
+    ----------
+    e : numpy.ndarray
+        The eccentric anomalies.
+    psr : psrparams
+        The ``psrparams`` instance describing the pulsar.
+
+    Returns
+    -------
+    numpy.ndarray
+        The velocities in km/s.
     """
     oldw = psr.orb.w
     v = np.array(e, copy=1)
@@ -445,13 +818,21 @@ def v_from_e(e, psr):
     return v
 
 
-def d_from_e(e, psr):
+def d_from_e(e: np.ndarray, psr) -> np.ndarray:
     """
-    d_from_e(e, psr):
-        Return a vector of time delays (s) from a vector of Eccentric
-        anomalys.
-            'e' is the vector of Eccentric anomalys.
-            'psr' is a psrparams instance containing info about the pulsar.
+    Return time delays from a vector of eccentric anomalies.
+
+    Parameters
+    ----------
+    e : numpy.ndarray
+        The eccentric anomalies.
+    psr : psrparams
+        The ``psrparams`` instance describing the pulsar.
+
+    Returns
+    -------
+    numpy.ndarray
+        The time delays in seconds.
     """
     oldw = psr.orb.w
     d = np.array(e, copy=1)
@@ -460,13 +841,21 @@ def d_from_e(e, psr):
     return d
 
 
-def p_from_e(e, psr):
+def p_from_e(e: np.ndarray, psr) -> np.ndarray:
     """
-    p_from_e(e, psr):
-        Return a vector of pulsar periods (s) from a vector of Eccentric
-        anomalys.
-            'e' is the vector of Eccentric anomalys.
-            'psr' is a psrparams instance containing info about the pulsar.
+    Return pulsar periods from a vector of eccentric anomalies.
+
+    Parameters
+    ----------
+    e : numpy.ndarray
+        The eccentric anomalies.
+    psr : psrparams
+        The ``psrparams`` instance describing the pulsar.
+
+    Returns
+    -------
+    numpy.ndarray
+        The pulsar periods in seconds.
     """
     oldw = psr.orb.w
     psr.orb.w = psr.orb.w * DEGTORAD
@@ -476,14 +865,23 @@ def p_from_e(e, psr):
     return p
 
 
-def z_from_e(e, psr, T):
+def z_from_e(e: np.ndarray, psr, T: float) -> np.ndarray:
     """
-    z_from_e(e, psr):
-        Return a vector of Fourier F-dots (bins) from a vector of Eccentric
-        anomalys.
-            'e' is the vector of Eccentric anomalys.
-            'psr' is a psrparams instance containing info about the pulsar.
-            'T' is the total length of the observation (s).
+    Return Fourier f-dots from a vector of eccentric anomalies.
+
+    Parameters
+    ----------
+    e : numpy.ndarray
+        The eccentric anomalies.
+    psr : psrparams
+        The ``psrparams`` instance describing the pulsar.
+    T : float
+        The total length of the observation in seconds.
+
+    Returns
+    -------
+    numpy.ndarray
+        The Fourier f-dots in bins.
     """
     oldw = psr.orb.w
     psr.orb.w = psr.orb.w * DEGTORAD
@@ -493,67 +891,133 @@ def z_from_e(e, psr, T):
     return z
 
 
-def pcorr(data, kernel, numbetween, lo, hi):
+def pcorr(
+    data: np.ndarray, kernel: np.ndarray, numbetween: int, lo: int, hi: int
+) -> np.ndarray:
     """
-    pcorr(data, kernel, numbetween, lo, hi):
-        Perform a correlation with the raw complex vectors 'data' and
-        'kernel'.  The returned vector should start at frequency
-        'lo' (must be an integer), and go up to but not include 'hi'
-        (also an integer).
+    Correlate the raw complex vectors `data` and `kernel`.
+
+    Parameters
+    ----------
+    data : numpy.ndarray
+        The raw complex data vector.
+    kernel : numpy.ndarray
+        The raw complex kernel vector.
+    numbetween : int
+        The Fourier interpolation factor.
+    lo : int
+        The starting frequency of the result (inclusive).
+    hi : int
+        The ending frequency of the result (exclusive).
+
+    Returns
+    -------
+    numpy.ndarray
+        The correlation result, from frequency `lo` up to (not including)
+        `hi`.
     """
-    kern_half_width = len(kernel) / (2 * numbetween)
-    result = np.zeros((hi - lo) * numbetween, 'F')
-    corr_complex(data, len(data), RAW,
-                 kernel, len(kernel), RAW,
-                 result, len(result), lo,
-                 numbetween, kern_half_width, CORR)
+    kern_half_width = len(kernel) // (2 * numbetween)
+    result = np.zeros((hi - lo) * numbetween, "F")
+    corr_complex(
+        data,
+        len(data),
+        RAW,
+        kernel,
+        len(kernel),
+        RAW,
+        result,
+        len(result),
+        lo,
+        numbetween,
+        kern_half_width,
+        CORR,
+    )
     return result
 
 
-def p_to_f(p, pd, pdd):
+def p_to_f(p: float, pd: float, pdd: float) -> list:
     """
-    p_to_f(p, pd, pdd):
-       Convert period, period derivative and period second
-       derivative to the equivalent frequency counterparts.
-       Will also convert from f to p.
+    Convert period and its derivatives to frequency and derivatives.
+
+    The conversion is symmetric, so it also converts from f to p.
+
+    Parameters
+    ----------
+    p : float
+        The period (or frequency).
+    pd : float
+        The period derivative (or frequency derivative).
+    pdd : float
+        The period second derivative (or frequency second derivative).
+
+    Returns
+    -------
+    list of float
+        ``[f, fd, fdd]``, the equivalent frequency counterparts.
     """
     f = 1.0 / p
     fd = -pd / (p * p)
-    if (pdd == 0.0):
+    if pdd == 0.0:
         fdd = 0.0
     else:
-        fdd = 2.0 * pd * pd / (p ** 3.0) - pdd / (p * p)
+        fdd = 2.0 * pd * pd / (p**3.0) - pdd / (p * p)
     return [f, fd, fdd]
 
 
 def bary_to_topo(pb, pbd, pbdd, infofilenm, ephem="DE200"):
     """
-    bary_to_topo(pb, pbd, pbdd, infofilenm, ephem="DE200"):
-       Use least squares to calculate topocentric period
-       period derivative, and period second derivative
-       for the corresponding barycentric values.  The data
-       for the observation must be found in the info file.
+    Calculate topocentric spin parameters from barycentric ones.
+
+    Uses least squares to compute the topocentric period, period
+    derivative, and period second derivative corresponding to the given
+    barycentric values. The observation data must be found in the info file.
+
+    Parameters
+    ----------
+    pb : float
+        The barycentric period.
+    pbd : float
+        The barycentric period derivative.
+    pbdd : float
+        The barycentric period second derivative.
+    infofilenm : str
+        The ``.inf`` file describing the observation.
+    ephem : str, optional
+        The solar-system ephemeris to use (default "DE200").
+
+    Returns
+    -------
+    list of float
+        ``[pt, ptd, ptdd]``, the topocentric period and its derivatives.
+
+    Warnings
+    --------
+    This routine is stale: it imports ``numpy.linalg.old`` (removed from
+    NumPy long ago) and calls ``barycenter()`` with an outdated argument
+    list, so it does not currently run. It is kept pending a rewrite.
     """
     from numpy.linalg.old import linear_least_squares
-    if infofilenm[-4:] == ".inf":  infofilenm = infofilenm[:-4]
+
+    if infofilenm[-4:] == ".inf":
+        infofilenm = infofilenm[:-4]
     obs = read_inffile(infofilenm)
     T = obs.N * obs.dt
     dt = 10.0
     tto = obs.mjd_i + obs.mjd_f
     tts = np.arange(tto, tto + (T + dt) / SECPERDAY, dt / SECPERDAY)
     nn = len(tts)
-    bts = np.zeros(nn, 'd')
-    vel = np.zeros(nn, 'd')
+    bts = np.zeros(nn, "d")
+    vel = np.zeros(nn, "d")
     ra = psr_utils.coord_to_string(obs.ra_h, obs.ra_m, obs.ra_s)
     dec = psr_utils.coord_to_string(obs.dec_d, obs.dec_m, obs.dec_s)
-    if (obs.telescope == 'Parkes'):
-        tel = 'PK'
-    elif (obs.telescope == 'Effelsberg'):
-        tel = 'EB'
-    elif (obs.telescope == 'Arecibo'):
-        tel = 'AO'
-    elif (obs.telescope == 'MMT'):
-        tel = 'MT'
+    if obs.telescope == "Parkes":
+        tel = "PK"
+    elif obs.telescope == "Effelsberg":
+        tel = "EB"
+    elif obs.telescope == "Arecibo":
+        tel = "AO"
+    elif obs.telescope == "MMT":
+        tel = "MT"
     else:
         print("Telescope not recognized.")
         return 0
@@ -562,11 +1026,11 @@ def bary_to_topo(pb, pbd, pbdd, infofilenm, ephem="DE200"):
     print("Barycentric start time = %17.11f" % bts[0])
     avgvel = np.add.reduce(vel) / nn
     print("Average Earth velocity = %10.5e c" % (avgvel))
-    tts = np.arange(nn, dtype='d') * dt
+    tts = np.arange(nn, dtype="d") * dt
     bts = (bts - bts[0]) * SECPERDAY
     [fb, fbd, fbdd] = p_to_f(pb, pbd, pbdd)
-    b = fb * bts + fbd * bts ** 2.0 / 2.0 + fbdd * bts ** 3.0 / 6.0
-    a = np.transpose(np.asarray([tts, tts ** 2.0, tts ** 3.0]))
+    b = fb * bts + fbd * bts**2.0 / 2.0 + fbdd * bts**3.0 / 6.0
+    a = np.transpose(np.asarray([tts, tts**2.0, tts**3.0]))
     [ft, ftd, ftdd], residuals, rank, sv = linear_least_squares(a, b)
     [pt, ptd, ptdd] = p_to_f(ft, ftd, ftdd)
     print("    Topocentric period = %15.12f" % pt)
@@ -578,24 +1042,36 @@ def bary_to_topo(pb, pbd, pbdd, infofilenm, ephem="DE200"):
     return [pt, ptd, ptdd]
 
 
-def measure_phase(profile, template, sigma, fwhm):
+def measure_phase(
+    profile: np.ndarray, template: np.ndarray, sigma: float, fwhm: float
+) -> tuple:
     """
-    measure_phase(profile, template, sigma, fwhm):
-       TOA measurement technique from J. H. Taylor's talk
-       _Pulsar_Timing_and_Relativistic_Gravity_.  Routine
-       takes two profiles, the first measured and the
-       second a high S/N template and determines the phase
-       offset of 'profile' from 'template'.  Both profiles
-       must have the same number of points.  'sigma' denotes
-       the RMS noise level of the 'profile'.  'fwhm' is the
-       approximate width of the template pulse (0-1).  The phase
-       returned is cyclic (i.e. from 0-1).  The routine
-       returns a tuple comtaining (tau, tau_err, b, b_err, a).
-       Where 'tau' is the phase, 'B' is the scaling factor,
-       and 'a' is the DC offset.  The error values are
-       estimates of the 1 sigma errors.
+    Measure the phase offset of a profile from a template.
+
+    Uses the TOA measurement technique from J. H. Taylor's talk
+    *Pulsar Timing and Relativistic Gravity*. The phase returned is cyclic
+    (0-1).
+
+    Parameters
+    ----------
+    profile : numpy.ndarray
+        The measured profile.
+    template : numpy.ndarray
+        A high-S/N template. It must have the same number of points as
+        `profile`.
+    sigma : float
+        The RMS noise level of `profile`.
+    fwhm : float
+        The approximate width of the template pulse (0-1).
+
+    Returns
+    -------
+    tuple
+        ``(tau, tau_err, b, b_err, a)``: the phase, its 1-sigma error, the
+        scaling factor and its 1-sigma error, and the DC offset.
     """
-    from simple_roots import newton_raphson
+    from presto.simple_roots import newton_raphson
+
     N = len(profile)
     if not (N == len(template)):
         print("Lengths of 'profile' and 'template' must")
@@ -620,38 +1096,34 @@ def measure_phase(profile, template, sigma, fwhm):
     # Estimate of the noise sigma (This needs to be checked)
     # Note:  Checked 10 Jul 2000.  Looks OK.
     sig = sigma * np.sqrt(N)
-    k = np.arange(len(ft), dtype='d') + 1.0
+    k = np.arange(len(ft), dtype="d") + 1.0
 
     def fn(tau, k=k, p=P_k, s=S_k, theta=Theta_k, phi=Phi_k):
         # Since Nyquist freq always has phase = 0.0
         k[-1] = 0.0
-        return np.add.reduce(k * p * s *
-                             np.sin(phi - theta + k * tau))
+        return np.add.reduce(k * p * s * np.sin(phi - theta + k * tau))
 
     def dfn(tau, k=k, p=P_k, s=S_k, theta=Theta_k, phi=Phi_k):
         # Since Nyquist freq always has phase = 0.0
         k[-1] = 0.0
-        return np.add.reduce(k * k * p * s *
-                             np.cos(phi - theta + k * tau))
+        return np.add.reduce(k * k * p * s * np.cos(phi - theta + k * tau))
 
     numphases = 200
-    ddchidt = np.zeros(numphases, 'd')
-    phases = np.arange(numphases, dtype='d') / \
-             float(numphases - 1) * TWOPI - PI
+    ddchidt = np.zeros(numphases, "d")
+    phases = np.arange(numphases, dtype="d") / float(numphases - 1) * TWOPI - PI
     for i in np.arange(numphases):
         ddchidt[i] = dfn(phases[i])
-    maxdphase = phases[np.argmax(ddchidt)] + \
-                0.5 * TWOPI / (numphases - 1.0)
+    maxdphase = phases[np.argmax(ddchidt)] + 0.5 * TWOPI / (numphases - 1.0)
     # Solve for tau
-    tau = newton_raphson(fn, dfn, maxdphase - 0.5 * fwhm * TWOPI,
-                         maxdphase + 0.5 * fwhm * TWOPI)
+    tau = newton_raphson(
+        fn, dfn, maxdphase - 0.5 * fwhm * TWOPI, maxdphase + 0.5 * fwhm * TWOPI
+    )
     # Solve for b
     c = P_k * S_k * np.cos(Phi_k - Theta_k + k * tau)
-    d = np.add.reduce(S_k ** 2.0)
+    d = np.add.reduce(S_k**2.0)
     b = np.add.reduce(c) / d
     # tau sigma
-    tau_err = sig * np.sqrt(1.0 / (2.0 * b *
-                                   np.add.reduce(k ** 2.0 * c)))
+    tau_err = sig * np.sqrt(1.0 / (2.0 * b * np.add.reduce(k**2.0 * c)))
     # b sigma  (Note:  This seems to be an underestimate...)
     b_err = sig * np.sqrt(1.0 / (2.0 * d))
     # Solve for a
@@ -659,15 +1131,29 @@ def measure_phase(profile, template, sigma, fwhm):
     return (tau / TWOPI, tau_err / TWOPI, b, b_err, a)
 
 
-def get_baryv(ra, dec, mjd, T, obs="PK"):
+def get_baryv(ra: str, dec: str, mjd: float, T: float, obs: str = "PK") -> float:
     """
-    get_baryv(ra, dec, mjd, T, obs="PK"):
-      Determine the average barycentric velocity towards 'ra', 'dec'
-      during an observation from 'obs'.  The RA and DEC are in the
-      standard string format (i.e. 'hh:mm:ss.ssss' and 'dd:mm:ss.ssss').
-      'T' is in sec and 'mjd' is (of course) in MJD.  The obs variable
-      is the standard two character ITOA string:  PK, GB, AO, GM, JB, ...
-      (see src/observatories.c)
+    Determine the average barycentric velocity towards a sky position.
+
+    Parameters
+    ----------
+    ra : str
+        The right ascension in ``hh:mm:ss.ssss`` format.
+    dec : str
+        The declination in ``dd:mm:ss.ssss`` format.
+    mjd : float
+        The start of the observation in MJD.
+    T : float
+        The observation length in seconds.
+    obs : str, optional
+        The standard two-character ITOA observatory code (PK, GB, AO, GM,
+        JB, ...; see ``src/observatories.c``). Default "PK".
+
+    Returns
+    -------
+    float
+        The average barycentric velocity towards `ra`, `dec` during the
+        observation, in units of v/c.
     """
     tts = np.linspace(mjd, mjd + T / 86400.0, 100)
     nn = len(tts)
@@ -677,30 +1163,57 @@ def get_baryv(ra, dec, mjd, T, obs="PK"):
     return vel.mean()
 
 
-def fold(indata, dt, nbins, f, fd=0.0, fdd=0.0, startphs=0.0, tlo=0.0, standard=True):
+def fold(
+    indata: np.ndarray,
+    dt: float,
+    nbins: int,
+    f: float,
+    fd: float = 0.0,
+    fdd: float = 0.0,
+    startphs: float = 0.0,
+    tlo: float = 0.0,
+    standard: bool = True,
+) -> tuple:
     """
-    fold(indata, dt, nbins, f, fd=0.0, fdd=0.0, startphs=0.0, tlo=0.0):
-      This is an interface into PRESTO's fold() code, which is what
-      prepfold uses to fold data.  It will return a tuple of a
-      double-precision profile of length nbins, and the ending phase
-      (0-1) of the fold.
-        indata is an array of floats to fold
-        dt is the duration in sec of each of the indata bins
-        f, fd, and fdd are the freq, freq deriv, and freq 2nd deriv to fold (Hz)
-        startphs (0-1) is the phase for the beginning of the first bin
-        tlo is the time (in sec) referring to the start of the first bin,
-          with respect to the reference time of f, fd, and fdd (i.e. tlo=0.0).
-        If standard (bool), then traditional prepfold "drizzling" will be
-          used.  Otherwise, treat each input data point as a sample and put
-          it fully in a single profile bin.
+    Fold data using PRESTO's ``fold()`` code (as ``prepfold`` does).
+
+    Parameters
+    ----------
+    indata : numpy.ndarray
+        The array of floats to fold.
+    dt : float
+        The duration in sec of each `indata` bin.
+    nbins : int
+        The number of bins in the output profile.
+    f : float
+        The frequency to fold at (Hz).
+    fd : float, optional
+        The frequency derivative to fold at (default 0.0).
+    fdd : float, optional
+        The frequency second derivative to fold at (default 0.0).
+    startphs : float, optional
+        The phase (0-1) for the beginning of the first bin (default 0.0).
+    tlo : float, optional
+        The time (sec) of the start of the first bin, with respect to the
+        reference time of `f`, `fd`, and `fdd` (default 0.0).
+    standard : bool, optional
+        If True (default), use traditional prepfold "drizzling"; otherwise
+        put each input data point fully into a single profile bin.
+
+    Returns
+    -------
+    prof : numpy.ndarray
+        The double-precision folded profile of length `nbins`.
+    phs : float
+        The ending phase (0-1) of the fold.
     """
     prof = np.zeros(nbins, dtype=np.float64)
     data = indata.astype(np.float32)
-    phs = simplefold(data, dt, tlo, prof, startphs, f, fd, fdd,
-                     1 if standard else 0)
+    phs = simplefold(data, dt, tlo, prof, startphs, f, fd, fdd, 1 if standard else 0)
     return (prof, phs)
 
-def compute_chi2(data, avg, var):
+
+def compute_chi2(data: np.ndarray, avg: float, var: float) -> float:
     """Compute chi^2 as a pulsation test for a folded pulse profile 'data'
 
     To get the reduced-chi^2, you would typically divide the result by
@@ -722,7 +1235,8 @@ def compute_chi2(data, avg, var):
     """
     return chisqr(data, avg, var)
 
-def compute_Z2N(data, N, var):
+
+def compute_Z2N(data: np.ndarray, N: int, var: float) -> float:
     """Compute Z^2_N statistic for a folded pulse profile 'data'
 
     See Bachetti et al. 2021 for details:

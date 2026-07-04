@@ -1,23 +1,29 @@
 #!/usr/bin/env python
+from __future__ import annotations
+
 import numpy as np
 
 
-def get_frac_harmonic(num, denom, spectrum):
-    """Return spectrum values corresponding to harmonic num/denom
+def get_frac_harmonic(
+    num: int | float, denom: int | float, spectrum: np.ndarray
+) -> np.ndarray:
+    """
+    Return spectrum values corresponding to the harmonic num/denom.
 
     Parameters
     ----------
-    num : integer or float
-        Numerator of the fractional harmonic
-    denom : integer or float
-        Denominator of the fractional harmonic
-    spectrum : float or double array
-        Spectrum that you want to do harmonic summing of
+    num : int or float
+        Numerator of the fractional harmonic.
+    denom : int or float
+        Denominator of the fractional harmonic.
+    spectrum : numpy.ndarray
+        The spectrum to harmonic-sum.
 
     Returns
     -------
-    array of the same type of spectrum
-        Selected elements of the spectrum for harmonic num/denom
+    numpy.ndarray
+        The selected elements of `spectrum` for the harmonic num/denom
+        (same dtype as `spectrum`).
     """
     inds = np.arange(len(spectrum), dtype=np.float64)
     # get the closest indices for the fractional harmonics
@@ -26,24 +32,31 @@ def get_frac_harmonic(num, denom, spectrum):
     return spectrum[bins]
 
 
-def harmonic_sum(numharm, spectrum, partial=None, partialN=1):
-    """Perform a top-down harmonic sum of a spectrum
+def harmonic_sum(
+    numharm: int,
+    spectrum: np.ndarray,
+    partial: np.ndarray | None = None,
+    partialN: int = 1,
+) -> np.ndarray:
+    """
+    Perform a top-down harmonic sum of a spectrum.
 
     Parameters
     ----------
-    numharm : integer
-        Number of harmonics to sum (2, 4, 8, 16, 32, or 64)
-    spectrum : float or double array
-        Spectrum to perform harmonic summing on
-    partial : float or double array
-        partially harmonic sum spectrum, default is None
+    numharm : int
+        The number of harmonics to sum (2, 4, 8, 16, 32, or 64).
+    spectrum : numpy.ndarray
+        The spectrum to harmonic-sum.
+    partial : numpy.ndarray, optional
+        A partially harmonic-summed spectrum to continue from (default None,
+        which starts a fresh sum).
     partialN : int, optional
-        Number of harmonics in partial spectrum
+        The number of harmonics already summed in `partial` (default 1).
 
     Returns
     -------
-    array of same type of the spectrum
-        The full harmonic summed spectrum
+    numpy.ndarray
+        The harmonic-summed spectrum (same dtype as `spectrum`).
     """
     if partialN == 1:
         partial = spectrum.copy()  # This is the high harmonic

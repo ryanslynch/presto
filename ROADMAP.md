@@ -272,6 +272,16 @@ build/rpath issues early.
 
 ## Other known issues to fix
 
+### `python/presto/filterbank.py` low-bit-depth support
+
+The pure-Python `filterbank.py` reader only supports 8-, 16-, and 32-bit filterbank files
+(`check_nbits` rejects everything else). It should be extended to also read **1-, 2-, and
+4-bit** data, which the SIGPROC format and PRESTO's C reader (`readfile`, `prep*`) all handle
+(e.g. the 4-bit `GBT_Lband_PSR.fil`). This needs sub-byte unpacking in `get_spectra` (samples
+are packed multiple-per-byte) plus `get_dtype`/`check_nbits` updates; the framing math
+(`bytes_per_spectrum = nchans*nbits // 8`) is already correct for packed low-bit data. Verify
+against `readfile` output on a known file.
+
 ### `prepfold_multi` generated command-line files
 
 `prepfold_multi` currently requires **manual** edits to its auto-generated

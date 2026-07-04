@@ -1,18 +1,34 @@
+from __future__ import annotations
+
 import bisect
+
+import numpy as np
+from scipy.integrate import quad
+from scipy.special import iv, chdtri, ndtr, ndtri
+
 from presto.psr_constants import PI, TWOPI, PIBYTWO
 from presto.simple_roots import newton_raphson
-from scipy.special import iv, chdtri, ndtr, ndtri
 from presto.cosine_rand import cosine_rand
-import numpy as np
 
 
-def sine_events(pulsed_frac, Nevents, phase=0.0):
+def sine_events(pulsed_frac: float, Nevents: int, phase: float = 0.0) -> np.ndarray:
     """
-    sine_events(pulsed_frac, Nevents, phase=0.0):
-       Return an array of 'Nevents' of phase values [0,1)
-       simulating a folded profile with a pulsed fraction
-       'pulsed_frac', a phase offset 'phase', and with a
-       sinusoidal pulse profile.
+    Simulate event phases from a sinusoidal folded profile.
+
+    Parameters
+    ----------
+    pulsed_frac : float
+        The pulsed fraction of the profile.
+    Nevents : int
+        The total number of events to generate.
+    phase : float, optional
+        A phase offset applied to the pulsed events (default 0.0).
+
+    Returns
+    -------
+    numpy.ndarray
+        An array of `Nevents` phase values in [0, 1) simulating a folded
+        profile with a sinusoidal pulse.
     """
     Nsrc = int(pulsed_frac * Nevents + 0.5)
     Nbak = Nevents - Nsrc
@@ -24,13 +40,28 @@ def sine_events(pulsed_frac, Nevents, phase=0.0):
     return phases
 
 
-def gaussian_events(pulsed_frac, Nevents, fwhm, phase=0.0):
+def gaussian_events(
+    pulsed_frac: float, Nevents: int, fwhm: float, phase: float = 0.0
+) -> np.ndarray:
     """
-    gaussian_events(pulsed_frac, Nevents, phase=0.0):
-       Return an array of 'Nevents' of phase values [0,1)
-       simulating a folded profile with a pulsed fraction
-       'pulsed_frac', a phase offset 'phase', and with a
-       gaussian pulse profile of width 'fwhm'
+    Simulate event phases from a Gaussian folded profile.
+
+    Parameters
+    ----------
+    pulsed_frac : float
+        The pulsed fraction of the profile.
+    Nevents : int
+        The total number of events to generate.
+    fwhm : float
+        The full width at half-max of the Gaussian pulse.
+    phase : float, optional
+        A phase offset applied to the pulsed events (default 0.0).
+
+    Returns
+    -------
+    numpy.ndarray
+        An array of `Nevents` phase values in [0, 1) simulating a folded
+        profile with a Gaussian pulse of width `fwhm`.
     """
     sigma = fwhm / 2.35482
     Nsrc = int(pulsed_frac * Nevents + 0.5)
@@ -43,11 +74,21 @@ def gaussian_events(pulsed_frac, Nevents, fwhm, phase=0.0):
     return phases
 
 
-def harm_to_sum(fwhm):
+def harm_to_sum(fwhm: float) -> int:
     """
-    harm_to_sum(fwhm):
-       For an MVMD profile of width 'fwhm', returns the
-       optimal number of harmonics to sum incoherently
+    Return the optimal number of harmonics to sum incoherently.
+
+    For an MVMD (Modified Von Mises Distribution) profile of width `fwhm`.
+
+    Parameters
+    ----------
+    fwhm : float
+        The pulse full width at half-max (0-1).
+
+    Returns
+    -------
+    int
+        The optimal number of harmonics to sum incoherently.
     """
     # fmt: off
     fwhms = [0.0108, 0.0110, 0.0113, 0.0117, 0.0119, 0.0124, 0.0127, 0.0132,
@@ -55,36 +96,68 @@ def harm_to_sum(fwhm):
              0.0180, 0.0191, 0.0199, 0.0207, 0.0220, 0.0228, 0.0242, 0.0257,
              0.0273, 0.0295, 0.0313, 0.0338, 0.0366, 0.0396, 0.0437, 0.0482,
              0.0542, 0.0622, 0.0714, 0.0836, 0.1037, 0.1313, 0.1799, 0.2883]
-    return len(fwhms)-bisect.bisect(fwhms, fwhm)+1
+    # fmt: on
+    return len(fwhms) - bisect.bisect(fwhms, fwhm) + 1
 
 
-def DFTexact(times, f, maxnumharms=20):
+def DFTexact(times: np.ndarray, f: float, maxnumharms: int = 20) -> np.ndarray:
     """
-    DFTexact(times, f, maxnumharms=20):
-       Return an array of 'maxnumharms' complex amplitudes
-       corresponding to the harmonics of the 'times' (in sec)
-       with a fundamental at frequency 'f' Hz.
+    Return the exact (unbinned) DFT amplitudes at the harmonics of a frequency.
+
+    Parameters
+    ----------
+    times : numpy.ndarray
+        The event times in seconds.
+    f : float
+        The fundamental frequency in Hz.
+    maxnumharms : int, optional
+        The number of harmonics to compute (default 20).
+
+    Returns
+    -------
+    numpy.ndarray
+        An array of `maxnumharms` complex amplitudes corresponding to the
+        harmonics of `times` with a fundamental at frequency `f`.
     """
     const = -TWOPI * (np.arange(maxnumharms, dtype=float) + 1.0) * f * complex(0.0, 1.0)
-    return np.add.reduce(np.exp(np.outerproduct(const, times)), axis=1)
+    return np.add.reduce(np.exp(np.outer(const, times)), axis=1)
 
 
-def incoherent_sum(amps):
+def incoherent_sum(amps: np.ndarray) -> np.ndarray:
     """
-    incoherent_sum(amps):
-       Return the incoherent sum of an array of complex Fourier
-       amplitudes.  Usually these correspond to the complex
-       harmonics of a periodic signal.
+    Return the incoherent sum of an array of complex Fourier amplitudes.
+
+    Usually these correspond to the complex harmonics of a periodic signal.
+
+    Parameters
+    ----------
+    amps : numpy.ndarray
+        A series of complex Fourier amplitudes.
+
+    Returns
+    -------
+    numpy.ndarray
+        The accumulated incoherently-summed powers.
     """
     return np.add.accumulate(np.abs(amps) ** 2.0)
 
 
-def coherent_sum(amps):
+def coherent_sum(amps: np.ndarray) -> np.ndarray:
     """
-    coherent_sum(amps):
-       Return the coherent sum (i.e. including phase information)
-       of an array of complex Fourier amplitudes.  Usually these
-       correspond to the complex harmonics of a periodic signal.
+    Return the coherent sum of an array of complex Fourier amplitudes.
+
+    Includes phase information. Usually these correspond to the complex
+    harmonics of a periodic signal.
+
+    Parameters
+    ----------
+    amps : numpy.ndarray
+        A series of complex Fourier amplitudes.
+
+    Returns
+    -------
+    numpy.ndarray
+        The accumulated coherently-summed powers.
     """
     phss = np.arctan2(amps.imag, amps.real)
     phs0 = phss[0]
@@ -93,20 +166,35 @@ def coherent_sum(amps):
     return np.abs(sumamps) ** 2.0
 
 
-def Htest_exact(phases, maxnumharms=20, weights=None):
+def Htest_exact(
+    phases: np.ndarray, maxnumharms: int = 20, weights: np.ndarray | None = None
+) -> tuple[float, int]:
     """
-    Htest_exact(phases, maxnumharms=20, weights=None):
-       Return an exactly computed (i.e. unbinned) H-test statistic
-       for periodicity for the events with folded phases 'phases' [0,1).
-       Also return the best number of harmonics.  The H-statistic and
-       harmonic number are returned as a tuple: (hstat, harmnum).
-       This routine returns the Leahy normalized H-statistic, and the
-       best number of harmonics summed.  If weights are set to be
-       fractional photon weights, then the weighted Htest is returned
-       (see Kerr 2011: http://arxiv.org/pdf/1103.2128.pdf)
+    Return an exactly computed (unbinned) H-test statistic for periodicity.
+
+    Returns the Leahy-normalized H-statistic and the best number of
+    harmonics summed. If `weights` are set to fractional photon weights,
+    the weighted H-test is returned (see Kerr 2011,
+    http://arxiv.org/pdf/1103.2128.pdf).
+
+    Parameters
+    ----------
+    phases : numpy.ndarray
+        The folded event phases in [0, 1).
+    maxnumharms : int, optional
+        The maximum number of harmonics to consider (default 20).
+    weights : numpy.ndarray, optional
+        Fractional photon weights. If None, the unweighted H-test is used.
+
+    Returns
+    -------
+    hstat : float
+        The H-test statistic.
+    harmnum : int
+        The best number of harmonics summed.
     """
     N = len(phases)
-    Zm2s = np.zeros(maxnumharms, dtype=np.float)
+    Zm2s = np.zeros(maxnumharms, dtype=float)
     rad_phases = 2.0 * np.pi * phases
     weightfact = 1.0 / (np.sum(weights**2.0) / N) if weights is not None else 1.0
     for harmnum in range(1, maxnumharms + 1):
@@ -122,20 +210,42 @@ def Htest_exact(phases, maxnumharms=20, weights=None):
     return (hs[bestharm], bestharm + 1)
 
 
-def Hstat_prob(h):
+def Hstat_prob(h: float) -> float:
     """
-    Hstat_prob(h):
-       Return the probability associated with an H-test statistic
-       of value 'h'.  Uses de Jager & Busching 2010 result.
+    Return the probability associated with an H-test statistic.
+
+    Uses the de Jager & Busching 2010 result.
+
+    Parameters
+    ----------
+    h : float
+        The H-test statistic.
+
+    Returns
+    -------
+    float
+        The probability associated with an H-test statistic of value `h`.
     """
     return np.exp(-0.4 * h)
 
 
-def gauss_sigma_to_prob(sigma):
+def gauss_sigma_to_prob(sigma: float) -> float:
     """
-    gauss_sigma_to_prob(sigma):
-        Returns the area under the Gaussian probability density
-        function, integrated from 'sigma' to infinity.
+    Return the upper-tail probability of the Gaussian distribution.
+
+    This is the area under the Gaussian probability density function
+    integrated from `sigma` to infinity.
+
+    Parameters
+    ----------
+    sigma : float
+        The Gaussian sigma (lower integration limit).
+
+    Returns
+    -------
+    float
+        The upper-tail probability. For sigma >= 5, the asymptotic series
+        from A&S page 932, eqn 26.2.12 for Q(x) is used.
     """
     if sigma < 5.0:
         return 1.0 - ndtr(sigma)
@@ -157,33 +267,73 @@ def gauss_sigma_to_prob(sigma):
         return Z / x * series
 
 
-def prob_to_gauss_sigma(prob):
+def prob_to_gauss_sigma(prob: float) -> float:
     """
-    prob_to_gauss_sigma(prob):
-        Returns the Gaussian sigma for which the area under the
-        Gaussian probability density function (integrated from minus
-        infinity to 'sigma') is equal to 'prob'.
+    Return the Gaussian sigma corresponding to a cumulative probability.
+
+    This is the sigma for which the area under the Gaussian probability
+    density function (integrated from minus infinity to sigma) equals
+    `prob`.
+
+    Parameters
+    ----------
+    prob : float
+        The cumulative Gaussian probability.
+
+    Returns
+    -------
+    float
+        The corresponding Gaussian sigma.
     """
     return ndtri(prob)
 
 
 def xray_time_to_detect(
-    ctrate, pfract, dt, fpsr, bins=0, confidence=0.99, detectfract=0.99
-):
+    ctrate: float,
+    pfract: float,
+    dt: float,
+    fpsr: float,
+    bins: int = 0,
+    confidence: float = 0.99,
+    detectfract: float = 0.99,
+) -> float | None:
     """
-    xray_time_to_detect(ctrate, pfract, dt, fpsr, bins=0, confidence=0.99,
-                        detectfract=0.99):
-        Return the observation duration required (assuming no breaks
-        and a sinusoidal pulse profile) to detect pulsations at
-        frequency 'fpsr' while looking in a number of Fourier
-        bins equal to 'bins' (Note: the default value of 0 means
-        that all bins will be examined).  'dt' is the bin duration in
-        sec, 'ctrate' is the total expected count rate, and 'pfract' is
-        the expected pulsed fraction.  'confidence' is the confidence
-        level that the signal is not caused by noise, and 'detectfract'
-        is the fraction of the time that you want this observation to
-        occur (i.e. if set to 0.5, 50% of observations of this duration
-        would detect the specified signal at 'confidence' level).
+    Return the observation duration required to detect X-ray pulsations.
+
+    Assumes no breaks and a sinusoidal pulse profile.
+
+    Parameters
+    ----------
+    ctrate : float
+        The total expected count rate.
+    pfract : float
+        The expected pulsed fraction.
+    dt : float
+        The bin duration in sec.
+    fpsr : float
+        The pulsar frequency in Hz.
+    bins : int, optional
+        The number of Fourier bins to search. The default of 0 means all
+        bins will be examined.
+    confidence : float, optional
+        The confidence level that the signal is not caused by noise
+        (default 0.99).
+    detectfract : float, optional
+        The fraction of the time you want this observation to result in a
+        detection (default 0.99). For example, 0.5 means 50% of
+        observations of this duration would detect the specified signal at
+        the `confidence` level.
+
+    Returns
+    -------
+    float or None
+        The required observation duration in sec.
+
+    Notes
+    -----
+    Based on para 1, sect 3.3, of Ransom, Gaensler, and Slane, 2002. This
+    routine is currently incomplete: the general (``bins == 0``) case is not
+    yet implemented and no duration is returned.
     """
     nyquist_freq = 0.5 / dt
     factor = binning_factor(fpsr, nyquist_freq) ** 2.0
@@ -202,70 +352,131 @@ def xray_time_to_detect(
 # The math comes from Groth, 1975, ApJS, 29, p285.
 
 
-def power_average(signal_power, n=1):
+def power_average(signal_power: float, n: int = 1) -> float:
     """
-    power_average(signal_power, n=1):
-        Return the expectation value of the measured power given
-        a signal with intrinsic power 'signal_power' and 'n'
-        summed powers.  This is from equation 14 in Groth, 1975.
+    Return the expectation value of the measured power.
+
+    From equation 14 in Groth, 1975.
+
+    Parameters
+    ----------
+    signal_power : float
+        The intrinsic signal power.
+    n : int, optional
+        The number of summed powers (default 1).
+
+    Returns
+    -------
+    float
+        The expectation value of the measured power.
     """
     return signal_power + n
 
 
-def power_variance(signal_power, n=1):
+def power_variance(signal_power: float, n: int = 1) -> float:
     """
-    power_variance(signal_power, n=1):
-        Return the variance of the measured power given a signal
-        with intrinsic power 'signal_power' and 'n' summed
-        powers.  This is from equation 14 in Groth, 1975.
+    Return the variance of the measured power.
+
+    From equation 14 in Groth, 1975.
+
+    Parameters
+    ----------
+    signal_power : float
+        The intrinsic signal power.
+    n : int, optional
+        The number of summed powers (default 1).
+
+    Returns
+    -------
+    float
+        The variance of the measured power.
     """
     return 2.0 * signal_power + n
 
 
-def power_sigma(signal_power, n=1):
+def power_sigma(signal_power: float, n: int = 1) -> float:
     """
-    power_sigma(signal_power, n=1):
-        Return the standard deviation of the measured power
-        given a signal with intrinsic power 'signal_power' and
-        'n' summed powers.  This is from equation 14 in Groth, 1975.
+    Return the standard deviation of the measured power.
+
+    From equation 14 in Groth, 1975.
+
+    Parameters
+    ----------
+    signal_power : float
+        The intrinsic signal power.
+    n : int, optional
+        The number of summed powers (default 1).
+
+    Returns
+    -------
+    float
+        The standard deviation of the measured power.
     """
     return np.sqrt(power_variance(signal_power, n))
 
 
-def log_fact_table(maxn):
+def log_fact_table(maxn: int) -> np.ndarray:
     """
-    log_fact_table(maxn):
-        Return a table of the natural logarithms of the
-        first 'maxn'+1 factorials.
+    Return a table of the natural logs of the first maxn+1 factorials.
+
+    Parameters
+    ----------
+    maxn : int
+        The largest factorial to include.
+
+    Returns
+    -------
+    numpy.ndarray
+        The natural logarithms of the first `maxn`+1 factorials.
     """
     table = np.arange(maxn + 1, dtype="d")
     table[0] = 1.0
     return np.add.accumulate(np.log(table))
 
 
-def binning_factor(freq, nyquist_freq):
+def binning_factor(freq: float | np.ndarray, nyquist_freq: float) -> float | np.ndarray:
     """
-    binning_factor(freq, nyquist_freq):
-        Return the factor that causes high frequency Fourier
-        Amplitudes to be decreased if the time series is
-        made of binned events.  Square this for a power
-        spectrum adjustment.  'freq' is the frequency of
-        interest and 'nyquist_freq' is the Nyquist Frequency
-        which can be defined as N/(2*T).
+    Return the amplitude reduction factor due to binning of events.
+
+    High-frequency Fourier amplitudes are decreased when the time series is
+    made of binned events. Square this for a power spectrum adjustment.
+
+    Parameters
+    ----------
+    freq : float or numpy.ndarray
+        The frequency (or frequencies) of interest.
+    nyquist_freq : float
+        The Nyquist frequency, which can be defined as N/(2*T).
+
+    Returns
+    -------
+    float or numpy.ndarray
+        The amplitude reduction factor.
     """
     x = 0.5 * np.asarray(freq) / nyquist_freq
     return np.sinc(x)  # numpy sinc is defined with pi
 
 
-def max_noise_power(bins, n=1, confidence=0.99):
+def max_noise_power(bins: float, n: int = 1, confidence: float = 0.99) -> float:
     """
-    max_noise_power(bins, n=1, confidence=0.99):
-        Return the power level that gives you some
-        'confidence' that spectral noise could not cause
-        that level in your power spectrum.  The total number
-        of independent frequencies searched is 'bins'.
-        This is P_detect in Vaughan et. al, 1994, and is also
-        known as P_threshold.
+    Return the power level unlikely to be caused by spectral noise.
+
+    This is P_detect in Vaughan et al., 1994, also known as P_threshold.
+
+    Parameters
+    ----------
+    bins : float
+        The total number of independent frequencies searched.
+    n : int, optional
+        The number of summed powers (default 1).
+    confidence : float, optional
+        The confidence that noise could not cause this level (default 0.99).
+
+    Returns
+    -------
+    float
+        The power level giving the specified `confidence` that spectral
+        noise could not cause it.
     """
     if n == 1:
         return -np.log((1.0 - confidence) / bins)
@@ -273,14 +484,32 @@ def max_noise_power(bins, n=1, confidence=0.99):
         return 0.5 * chdtri(2.0 * n, (1.0 - confidence) / bins)
 
 
-def prob_power_series(power, signal_power, n=1, TOL=1.0e-14):
+def prob_power_series(
+    power: float, signal_power: float, n: int = 1, TOL: float = 1.0e-14
+) -> float:
     """
-    prob_power_series(power, signal_power, n=1, TOL=1.0e-14):
-        Return the integrated probability from P=0 to 'power'
-        that a signal with theoretical power 'signal_power'
-        will show up in a power spectrum with power 'power'.
-        This method evaluates the integral using an infinite
-        sum and is equation 16 in Groth, 1975.
+    Return the integrated detection probability using an infinite sum.
+
+    Returns the integrated probability from P=0 to `power` that a signal
+    with theoretical power `signal_power` will show up in a power spectrum
+    with power `power`. This evaluates the integral using an infinite sum
+    and is equation 16 in Groth, 1975.
+
+    Parameters
+    ----------
+    power : float
+        The upper limit of the power integration.
+    signal_power : float
+        The theoretical signal power.
+    n : int, optional
+        The number of summed powers (default 1).
+    TOL : float, optional
+        The convergence tolerance for the sum (default 1.0e-14).
+
+    Returns
+    -------
+    float
+        The integrated probability.
     """
     fact = np.exp(-(power + signal_power))
     lf = log_fact_table((power + signal_power) * 5)
@@ -300,14 +529,28 @@ def prob_power_series(power, signal_power, n=1, TOL=1.0e-14):
     return 1.0 - sum
 
 
-def prob_power_integral(power, signal_power, n=1):
+def prob_power_integral(power: float, signal_power: float, n: int = 1) -> float:
     """
-    prob_power_integral(power, signal_power, n=1):
-        Return the integrated probability from P=0 to 'power'
-        that a signal with theoretical power 'signal_power'
-        will show up in a power spectrum with power 'power'.
-        This method evaluates the integral numerically and
-        is equation 18 in Groth, 1975.
+    Return the integrated detection probability using numerical integration.
+
+    Returns the integrated probability from P=0 to `power` that a signal
+    with theoretical power `signal_power` will show up in a power spectrum
+    with power `power`. This evaluates the integral numerically and is
+    equation 18 in Groth, 1975.
+
+    Parameters
+    ----------
+    power : float
+        The upper limit of the power integration.
+    signal_power : float
+        The theoretical signal power.
+    n : int, optional
+        The number of summed powers (default 1).
+
+    Returns
+    -------
+    float
+        The integrated probability.
     """
 
     def integrand(theta, p, ps, n):
@@ -327,14 +570,28 @@ def prob_power_integral(power, signal_power, n=1):
     return val / PI
 
 
-def power_probability(power, signal_power, n=1):
+def power_probability(power: float, signal_power: float, n: int = 1) -> float:
     """
-    power_probability(power, signal_power, n=1):
-        Return the probability of a signal with power
-        'signal_power' actually showing up with power
-        'power' in a power spectrum'  This is equation
-        12 in Groth, 1975 and is the integrand of the
-        prob_power_* functions (which integrate it from 0 to P)
+    Return the probability density of a measured power.
+
+    Returns the probability of a signal with power `signal_power` actually
+    showing up with power `power` in a power spectrum. This is equation 12
+    in Groth, 1975 and is the integrand of the prob_power_* functions
+    (which integrate it from 0 to P).
+
+    Parameters
+    ----------
+    power : float
+        The measured power.
+    signal_power : float
+        The theoretical signal power.
+    n : int, optional
+        The number of summed powers (default 1).
+
+    Returns
+    -------
+    float
+        The probability density.
     """
     return (
         (power / signal_power) ** (0.5 * (n - 1))
@@ -343,17 +600,30 @@ def power_probability(power, signal_power, n=1):
     )
 
 
-def required_signal_power(power, n=1, confidence=0.99):
+def required_signal_power(power: float, n: int = 1, confidence: float = 0.99) -> float:
     """
-    required_signal_power(power, n=1, confidence=0.99):
-        Return the required power of a signal that will cause
-        at least a power 'power' in a power spectrum a fraction
-        'confidence' of the time.  This is the inverse of
-        equation 16 in Groth, 1975, with solves for P_signal.
-        If called with 'power' = P_detect the result is
-        the search sensitivity.  If called with 'power' = P_max,
-        then the result is the upper limit on the signal power
-        in the power spectrum.
+    Return the signal power required to produce a given measured power.
+
+    Returns the required power of a signal that will cause at least a power
+    `power` in a power spectrum a fraction `confidence` of the time. This is
+    the inverse of equation 16 in Groth, 1975, solved for P_signal. If
+    called with ``power = P_detect`` the result is the search sensitivity;
+    if called with ``power = P_max``, the result is the upper limit on the
+    signal power in the power spectrum.
+
+    Parameters
+    ----------
+    power : float
+        The measured power level.
+    n : int, optional
+        The number of summed powers (default 1).
+    confidence : float, optional
+        The fractional confidence (default 0.99).
+
+    Returns
+    -------
+    float
+        The required signal power.
     """
     prob = 1.0 - confidence
 
@@ -367,20 +637,32 @@ def required_signal_power(power, n=1, confidence=0.99):
     return P_signal
 
 
-def fft_sensitivity(N, bins=0, n=1, confidence=0.99):
+def fft_sensitivity(
+    N: int, bins: float = 0, n: int = 1, confidence: float = 0.99
+) -> float:
     """
-    fft_sensitivity(N, bins=0, n=1, confidence=0.99):
-        Return a measure of the weakest signal power you can
-        confidently detect in an FFT search containing 'N' data
-        points (this is the number of bins in the time series -- the
-        number of Frequency bins searched is usually N/2).  'bins' is
-        only different from 0 if the number of independent frequencies
-        searched does not equal N/2 (i.e. when an acceleration search
-        is performed).  'confidence' is our fractional confidence in
-        the result (i.e. 0.99 = 99% limit).  This calculation does not
-        include the correction to sensitivity due to binning effects.
-        These calculations are based on the Vaughan et al 1994 paper
-        and compute P_sens.
+    Return the weakest signal power detectable in an FFT search.
+
+    This calculation does not include the correction to sensitivity due to
+    binning effects. Based on the Vaughan et al 1994 paper; computes P_sens.
+
+    Parameters
+    ----------
+    N : int
+        The number of bins in the time series (the number of frequency bins
+        searched is usually N/2).
+    bins : float, optional
+        The number of independent frequencies searched, if different from
+        N/2 (e.g. for an acceleration search). The default of 0 uses N/2.
+    n : int, optional
+        The number of summed powers (default 1).
+    confidence : float, optional
+        The fractional confidence in the result (default 0.99).
+
+    Returns
+    -------
+    float
+        The weakest confidently detectable signal power (P_sens).
     """
     if not (bins):
         bins = N / 2
@@ -388,58 +670,120 @@ def fft_sensitivity(N, bins=0, n=1, confidence=0.99):
     return required_signal_power(P_threshold, n, confidence)
 
 
-def rzw_sensitivity(N, zlo=-100.0, zhi=100.0, n=1, confidence=0.99):
+def rzw_sensitivity(
+    N: int,
+    zlo: float = -100.0,
+    zhi: float = 100.0,
+    n: int = 1,
+    confidence: float = 0.99,
+) -> float:
     """
-    rzw_sensitivity(N, zlo=-100.0, zhi=100.0, n=1, confidence=0.99):
-        Return a measure of the weakest signal power you can
-        confidently detect in an RZW (Fourier acceleration) search
-        containing 'N' data points (this is the number of bins in the
-        time series) and low and high acceleration values of 'zlo'
-        and 'zhi'.  'confidence' is our fractional confidence in
-        the result (i.e. 0.99 = 99% limit).  This calculation does not
-        include the correction to sensitivity due to binning effects.
-        These calculations are based on the Vaughan et al 1994 paper
-        and compute P_sens.
+    Return the weakest signal power detectable in an RZW acceleration search.
+
+    This calculation does not include the correction to sensitivity due to
+    binning effects. Based on the Vaughan et al 1994 paper; computes P_sens.
+
+    Parameters
+    ----------
+    N : int
+        The number of bins in the time series.
+    zlo : float, optional
+        The low acceleration (z) value searched (default -100.0).
+    zhi : float, optional
+        The high acceleration (z) value searched (default 100.0).
+    n : int, optional
+        The number of summed powers (default 1).
+    confidence : float, optional
+        The fractional confidence in the result (default 0.99).
+
+    Returns
+    -------
+    float
+        The weakest confidently detectable signal power (P_sens).
     """
     bins = N / 2.0 * (zhi - zlo + 1.0) / 6.95
     P_threshold = max_noise_power(bins, n, confidence)
     return required_signal_power(P_threshold, n, confidence)
 
 
-def binned_fft_sensitivity(N, dt, freq, bins=0, n=1, confidence=0.99):
+def binned_fft_sensitivity(
+    N: int,
+    dt: float,
+    freq: float,
+    bins: float = 0,
+    n: int = 1,
+    confidence: float = 0.99,
+) -> float:
     """
-    binned_fft_sensitivity(N, dt, freq, bins=0, n=1, confidence=0.99):
-        Return a measure of the weakest signal power of frequency 'freq'
-        Hz you can confidently detect in an FFT search containing 'N'
-        data points (this is the number of bins in the time series --
-        the number of Frequency bins searched is usually 1/2 of this
-        value) each of which was binned into 'dt' sec bins.
-        'bins' is only different from 0 if the number of independent
-        frequencies searched does not equal N/2 (i.e. when an
-        acceleration search is performed).  'confidence' is our
-        fractional confidence in the result (i.e. 0.99 = 99% limit).
-        This calculation includes the correction to sensitivity
-        due to binning effects.  These calculations are based on
-        the Vaughan et al 1994 paper and compute P_sens.
+    Return the weakest detectable signal power in a binned FFT search.
+
+    Includes the correction to sensitivity due to binning effects. Based on
+    the Vaughan et al 1994 paper; computes P_sens.
+
+    Parameters
+    ----------
+    N : int
+        The number of bins in the time series (the number of frequency bins
+        searched is usually N/2), each binned into `dt` sec bins.
+    dt : float
+        The bin duration in sec.
+    freq : float
+        The signal frequency in Hz.
+    bins : float, optional
+        The number of independent frequencies searched, if different from
+        N/2 (e.g. for an acceleration search). The default of 0 uses N/2.
+    n : int, optional
+        The number of summed powers (default 1).
+    confidence : float, optional
+        The fractional confidence in the result (default 0.99).
+
+    Returns
+    -------
+    float
+        The weakest confidently detectable signal power (P_sens) at `freq`.
     """
     nyquist_freq = 0.5 / dt
     factor = binning_factor(freq, nyquist_freq) ** 2.0
     return fft_sensitivity(N, bins, n, confidence) / factor
 
 
-def binned_rzw_sensitivity(N, dt, freq, zlo=-100.0, zhi=100.0, n=1, confidence=0.99):
+def binned_rzw_sensitivity(
+    N: int,
+    dt: float,
+    freq: float,
+    zlo: float = -100.0,
+    zhi: float = 100.0,
+    n: int = 1,
+    confidence: float = 0.99,
+) -> float:
     """
-    binned_rzw_sensitivity(N, dt, freq, zlo=-100.0, zhi=100.0,
-                           n=1, confidence=0.99):
-        Return a measure of the weakest signal power of frequency 'freq'
-        Hz you can confidently detect in an RZW (Fourier acceleration)
-        search containing 'N' data points (this is the number of bins in
-        the time series) each of which was binned into 'dt' sec bins.
-        Low and high acceleration values of 'zlo' and 'zhi' were used.
-        'confidence' is our fractional confidence in the result (i.e.
-        0.99 = 99% limit).  This calculation includes the correction to
-        sensitivity due to binning effects.  These calculations are
-        based on the Vaughan et al 1994 paper and compute P_sens.
+    Return the weakest detectable signal power in a binned RZW search.
+
+    Includes the correction to sensitivity due to binning effects. Based on
+    the Vaughan et al 1994 paper; computes P_sens.
+
+    Parameters
+    ----------
+    N : int
+        The number of bins in the time series, each binned into `dt` sec
+        bins.
+    dt : float
+        The bin duration in sec.
+    freq : float
+        The signal frequency in Hz.
+    zlo : float, optional
+        The low acceleration (z) value searched (default -100.0).
+    zhi : float, optional
+        The high acceleration (z) value searched (default 100.0).
+    n : int, optional
+        The number of summed powers (default 1).
+    confidence : float, optional
+        The fractional confidence in the result (default 0.99).
+
+    Returns
+    -------
+    float
+        The weakest confidently detectable signal power (P_sens) at `freq`.
     """
     bins = N / 2.0 * (zhi - zlo + 1.0) / 6.95
     nyquist_freq = 0.5 / dt
@@ -447,19 +791,29 @@ def binned_rzw_sensitivity(N, dt, freq, zlo=-100.0, zhi=100.0, n=1, confidence=0
     return fft_sensitivity(N, bins, n, confidence) / factor
 
 
-def pulsed_fraction_limit(Nphot, Pow):
+def pulsed_fraction_limit(Nphot: float, Pow: float) -> float:
     """
-    pulsed_fraction_limit(phot, Pow):
-        Return an _observational_ (i.e. not intrinsic) upper limit
-        to the pulsed fraction of a signal that is in the data but
-        was not detected.  By observational, I mean that some of the
-        unpulsed events do not come from the source you are looking
-        for pulsations in.  The data contain a total of 'Nphot'
-        photons and the largest measured power (or P_sens as
-        calculated using the *_sensitivity functions in this module)
-        is 'Pow'.  If you want the _intrinsic_ pulsed fraction,
-        you should divide the returned value by the fraction of Nphot
-        that actually comes from the _source_ (i.e. the NS).
+    Return an observational upper limit to the pulsed fraction of a signal.
+
+    This is an *observational* (i.e. not intrinsic) upper limit to the
+    pulsed fraction of a signal that is in the data but was not detected.
+    "Observational" means that some of the unpulsed events do not come from
+    the source you are searching for pulsations in. For the *intrinsic*
+    pulsed fraction, divide the returned value by the fraction of `Nphot`
+    that actually comes from the source (i.e. the NS).
+
+    Parameters
+    ----------
+    Nphot : float
+        The total number of photons in the data.
+    Pow : float
+        The largest measured power (or P_sens as calculated using the
+        ``*_sensitivity`` functions in this module).
+
+    Returns
+    -------
+    float
+        The observational upper limit to the pulsed fraction.
     """
     return np.sqrt(4.0 * (Pow - 1.0) / Nphot)
 

@@ -1,6 +1,8 @@
-from builtins import object
-import six
-import math, re
+from __future__ import annotations
+
+import math
+import re
+
 from presto import psr_utils as pu
 from presto import psr_constants as pc
 
@@ -118,7 +120,24 @@ str_keys = ["FILE", "PSR", "PSRJ", "RAJ", "DECJ", "EPHEM", "CLK", "BINARY"]
 
 
 class psr_par(object):
-    def __init__(self, parfilenm):
+    """
+    A pulsar ephemeris parsed from a TEMPO/tempo2 ``.par`` file.
+
+    Each recognized parameter in the file becomes an attribute (with a
+    matching ``<name>_ERR`` attribute for its uncertainty, when present).
+    A number of derived quantities are also computed: period/frequency and
+    their errors are cross-filled via :func:`presto.psr_utils.p_to_f` /
+    :func:`presto.psr_utils.pferrs`; ELL1 Laplace parameters (EPS1/EPS2) are
+    converted to E/OM/T0; and, if the ``slalib`` package is available,
+    Galactic and Ecliptic coordinates are computed from RA/DEC.
+
+    Parameters
+    ----------
+    parfilenm : str
+        The path to the ``.par`` file.
+    """
+
+    def __init__(self, parfilenm: str):
         self.FILE = parfilenm
         pf = open(parfilenm)
         for line in pf.readlines():
@@ -269,36 +288,50 @@ class psr_par(object):
             setattr(self, "E_ERR", self.ECC_ERR)
         pf.close()
 
-    def __str__(self):
+    def __str__(self) -> str:
         out = ""
         for k, v in list(self.__dict__.items()):
             if k[:2] != "__":
-                if type(self.__dict__[k]) in six.string_types:
+                if isinstance(self.__dict__[k], str):
                     out += "%10s = '%s'\n" % (k, v)
                 else:
                     out += "%10s = %-20.15g\n" % (k, v)
         return out
 
 
-def ELL1_check(par_file, output=False):
+def ELL1_check(par_file: str, output: bool = False) -> bool | None:
     """
-    ELL1_check(par_file):
-        Check the parfile to see if ELL1 can be safely used as the
-            binary model.  To work properly, we should have:
-            asini/c * ecc**2 << timing precision / sqrt(# TOAs)
+    Check whether the ELL1 binary model can be safely used for a parfile.
+
+    To work properly, we should have
+    ``asini/c * ecc**2 << timing precision / sqrt(# TOAs)``.
+
+    Parameters
+    ----------
+    par_file : str
+        The path to the ``.par`` file.
+    output : bool, optional
+        If True, print diagnostic information (default False).
+
+    Returns
+    -------
+    bool or None
+        True if ELL1 should be fine or acceptable, False if BT or DD is
+        recommended instead, or None if the required parameters
+        (asini/ecc or TRES/NTOA) are not present in the parfile.
     """
     psr = psr_par(par_file)
     try:
         lhs = psr.A1 * psr.E**2.0 * 1e6
-    except:
+    except Exception:
         if output:
             print(
                 "Can't compute asini/c * ecc**2, maybe parfile doesn't have a binary?"
             )
         return
     try:
-        rhs = psr.TRES / Num.sqrt(psr.NTOA)
-    except:
+        rhs = psr.TRES / math.sqrt(psr.NTOA)
+    except Exception:
         if output:
             print(
                 "Can't compute TRES / sqrt(# TOAs), maybe this isn't a TEMPO output parfile?"

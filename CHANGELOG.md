@@ -1,4 +1,29 @@
 ## Development (unreleased, since v5.3.1):
+ * **Modernized the main `python/presto` modules** (per ROADMAP "Docstrings, typehints, and
+   ruff"): added NumPy-style docstrings and type hints and ran `ruff format` on `psr_utils`,
+   `events`, `bestprof`, `harmonic_sum`, `infodata`, `filterbank`, `polycos`, `spectra`,
+   `sinc_interp`, `psrfits`, `simple_roots`, `prepfold`, `parfile`, `rfifind`, `binary_psr`,
+   `cosine_rand`, `sigproc`, and the `presto_src` SWIG-wrapper layer.  Along the way, dropped the
+   Python-2 `from builtins import ...` shims and the now-unused **`six`** dependency, renamed
+   module-local `import numpy as Num/num` to `np`, and replaced a few `import *` wildcards with
+   explicit imports.  Notable bug fixes uncovered during the pass:
+   - `psr_utils`, `events`: fixed APIs so the modules run on modern NumPy/SciPy (`np.complex`,
+     `np.array(copy=False)`, `scipy.optimize.zeros`, `np.outerproduct`, `np.float`, and a
+     missing `scipy.integrate.quad` import — several `events` functions could not run before).
+   - `spectra`: the `Spectra` constructor now stores its `dm` argument (was silently discarded).
+   - `infodata.to_file()`: now writes the `waveband`/`beam_diam` fields (were lost on a
+     read/write round-trip).
+   - `parfile.ELL1_check()` and `sinc_interp.kaiser_window()`: fixed undefined-name bugs
+     (`Num.sqrt`, a missing `i0` import) that stopped them running.
+   - `rfifind.write_weights_and_offsets()`: `invertband=True` is no longer silently ignored.
+   - `binary_psr`: `reflex_motion()` referenced an undefined `omega`, and `most_recent_peri()`
+     raised on array input.
+   - `psrfits`: fixed an invalid-escape `DATE-OBS` regex, a wrong multi-file `TELESCOP` check,
+     and a misplaced `np.any()` parenthesis (all warning/display paths).
+   - `cosine_rand`: load its shipped JSON table via `importlib.resources`.
+ * Fixed the stale `__version__` in `python/presto/__init__.py` (was `'v5.0.2.dev22'`) to match
+   the authoritative `5.3.1`, and taught `determine_version.py --write` to keep it in sync
+   (adding `truncate()` so a shorter version string can't corrupt the rewritten files).
  * Removed the vendored **Starlink SLALIB** date/time routines (`src/cldj.c`,
    `src/djcl.c`, `include/slalib.h`, `include/slamac.h`) and replaced their use with
    **ERFA**, which is already a hard dependency (barycentering).  `slaCldj` (Gregorian

@@ -1,17 +1,35 @@
+from __future__ import annotations
+
 import sys
 import copy
 import random
 import struct
-import numpy as np
-from presto import psr_utils, infodata, polycos, Pgplot
-import six
 import numbers
+
+import numpy as np
+
+from presto import psr_utils, infodata, polycos, Pgplot
 from presto.bestprof import bestprof
 from presto.presto import chi2_sigma
 
 
 class pfd(object):
-    def __init__(self, filename):
+    """
+    A folded-profile data file, as written by PRESTO's ``prepfold``.
+
+    Parses a ``.pfd`` file (and its ``.bestprof``/``.polycos`` companions,
+    if present) into the folded profiles, per-subband/interval statistics,
+    and the associated fold and search parameters, and provides methods to
+    dedisperse, adjust the period, combine profiles, compute reduced-chi^2,
+    and plot.
+
+    Parameters
+    ----------
+    filename : str
+        The path to the ``.pfd`` file.
+    """
+
+    def __init__(self, filename: str):
         self.pfd_filename = filename
         infile = open(filename, "rb")
         # See if the .bestprof file is around
@@ -74,7 +92,7 @@ class pfd(object):
         # point accuracy is ~1 us!
         if self.telescope == "GBT":
             if (
-                np.fabs(np.fmod(self.dt, 8.192e-05) < 1e-12)
+                np.fabs(np.fmod(self.dt, 8.192e-05)) < 1e-12
                 and ("spigot" in filename.lower() or "guppi" not in filename.lower())
                 and (self.tepoch < 54832.0)
             ):
@@ -178,7 +196,7 @@ class pfd(object):
                     if idata.waveband == "Radio":
                         self.bestdm = idata.DM
                         self.numchan = idata.numchan
-                except:
+                except Exception:
                     self.bestdm = 0.0
                     self.numchan = 1
             except IOError:
@@ -249,11 +267,11 @@ class pfd(object):
         if self.barysubfreqs is None:
             self.barysubfreqs = self.subfreqs
 
-    def __str__(self):
+    def __str__(self) -> str:
         out = ""
         for k, v in list(self.__dict__.items()):
             if k[:2] != "__":
-                if isinstance(self.__dict__[k], six.string_types):
+                if isinstance(self.__dict__[k], str):
                     out += "%10s = '%s'\n" % (k, v)
                 elif isinstance(self.__dict__[k], numbers.Integral):
                     out += "%10s = %d\n" % (k, v)
@@ -261,17 +279,29 @@ class pfd(object):
                     out += "%10s = %-20.15g\n" % (k, v)
         return out
 
-    def dedisperse(self, DM=None, interp=False, doppler=False):
+    def dedisperse(
+        self, DM: float | None = None, interp: bool = False, doppler: bool = False
+    ) -> None:
         """
-        dedisperse(DM=self.bestdm, interp=False, doppler=False):
-            Rotate (internally) the profiles so that they are de-dispersed
-                at a dispersion measure of DM.  Use FFT-based interpolation if
-                'interp' is non-zero (NOTE: It is off by default!).
-                Doppler shift subband frequencies if doppler is non-zero.
-                (NOTE: It is off by default. However, if you fold raw data
-                for a search candidate (and let it search), prepfold *does*
-                doppler correct the frequencies! It does *not* doppler
-                correct if you fold with polycos for timing, for instance.)
+        Rotate the profiles (in-place) to dedisperse them at a given DM.
+
+        Parameters
+        ----------
+        DM : float, optional
+            The dispersion measure to dedisperse to. If None (default), use
+            ``self.bestdm``.
+        interp : bool, optional
+            If True, use FFT-based interpolation (default False, as in
+            prepfold).
+        doppler : bool, optional
+            If True, Doppler shift the subband frequencies (default False).
+            Note that prepfold *does* Doppler correct frequencies when
+            folding raw data for a search candidate that it searches, but
+            does *not* when folding with polycos for timing.
+
+        Returns
+        -------
+        None
         """
         if DM is None:
             DM = self.bestdm
@@ -310,15 +340,28 @@ class pfd(object):
             print("self.avgprof is not the correct value!")
         self.currdm = DM
 
-    def freq_offsets(self, p=None, pd=None, pdd=None):
+    def freq_offsets(
+        self, p: float | None = None, pd: float | None = None, pdd: float | None = None
+    ) -> tuple[float, float, float]:
         """
-        freq_offsets(p=*bestp*, pd=*bestpd*, pdd=*bestpdd*):
-            Return the offsets between given frequencies
-            and fold frequencies.
+        Return the offsets between given frequencies and the fold frequencies.
 
-            If p, pd or pdd are None use the best values.
+        Parameters
+        ----------
+        p : float, optional
+            The period to compare against. If None (default), use the best
+            value.
+        pd : float, optional
+            The period derivative. If None (default), use the best value.
+        pdd : float, optional
+            The period second derivative. If None (default), use the best
+            value.
 
-            A 3-tuple is returned.
+        Returns
+        -------
+        tuple of (float, float, float)
+            The frequency, frequency-derivative, and frequency-second-
+            derivative offsets ``(f_diff, fd_diff, fdd_diff)``.
         """
         if self.fold_pow == 1.0:
             bestp = self.bary_p1
@@ -364,29 +407,29 @@ class pfd(object):
 
         return (f_diff, fd_diff, fdd_diff)
 
-    def DOF_corr(self):
+    def DOF_corr(self) -> float:
         """
-        DOF_corr():
-            Return a multiplicative correction for the effective number of
-            degrees of freedom in the chi^2 measurement resulting from a
-            pulse profile folded by PRESTO's fold() function
-            (i.e. prepfold).  This is required because there are
-            correlations between the bins caused by the way that prepfold
-            folds data (i.e. treating a sample as finite duration and
-            smearing it over potenitally several bins in the profile as
-            opposed to instantaneous and going into just one profile bin).
-            The correction is semi-analytic (thanks to Paul Demorest and
-            Walter Brisken) but the values for 'power' and 'factor' have
-            been determined from Monte Carlos.  The correction is good to
-            a fractional error of less than a few percent as long as
-            dt_per_bin is > 0.5 or so (which it usually is for pulsar
-            candidates).  There is a very minimal number-of-bins
-            dependence, which is apparent when dt_per_bin < 0.7 or so.
-            dt_per_bin is the width of a profile bin in samples (a float),
-            and so for prepfold is pulse period / nbins / sample time.  Note
-            that the sqrt of this factor can be used to 'inflate' the RMS
-            of the profile as well, for radiometer eqn flux density estimates,
-            for instance.
+        Return the effective-degrees-of-freedom correction for the chi^2.
+
+        This multiplicative correction accounts for correlations between
+        profile bins caused by the way ``prepfold`` folds data (treating a
+        sample as finite in duration and smearing it over potentially
+        several bins, rather than as instantaneous and going into a single
+        bin). The correction is semi-analytic (thanks to Paul Demorest and
+        Walter Brisken); the values for ``power`` and ``factor`` were
+        determined from Monte Carlos. It is good to a fractional error of a
+        few percent as long as ``dt_per_bin`` is greater than ~0.5 (usually
+        the case for pulsar candidates), with a very minimal
+        number-of-bins dependence apparent when ``dt_per_bin`` < ~0.7.
+        ``dt_per_bin`` is the width of a profile bin in samples (pulse
+        period / nbins / sample time).
+
+        Returns
+        -------
+        float
+            The multiplicative DOF correction factor. Note that its square
+            root can also be used to 'inflate' the profile RMS, e.g. for
+            radiometer-equation flux density estimates.
         """
         power, factor = 1.806, 0.96  # From Monte Carlo
         return (
@@ -395,17 +438,20 @@ class pfd(object):
             * (1.0 + self.dt_per_bin ** (power)) ** (-1.0 / power)
         )
 
-    def use_for_timing(self):
+    def use_for_timing(self) -> bool:
         """
-        use_for_timing():
-            This method returns True or False depending on whether
-            the .pfd file can be used for timing or not.  For this
-            to return true, the pulsar had to have been folded with
-            a parfile and -no[p/pd]search (this includes -timing), or
-            with a p/pdot/pdotdot and a corresponding -no[p/pd]search.
-            In other words, if you let prepfold search for the best
-            p/pdot/pdotdot, you will get bogus TOAs if you try timing
-            with it.
+        Return whether the ``.pfd`` file can be used for timing.
+
+        For this to return True, the pulsar must have been folded with a
+        parfile and ``-no[p/pd]search`` (this includes ``-timing``), or with
+        a p/pdot/pdotdot and a corresponding ``-no[p/pd]search``. If you let
+        prepfold search for the best p/pdot/pdotdot, you will get bogus TOAs
+        if you try to time with it.
+
+        Returns
+        -------
+        bool
+            True if the file is suitable for timing, False otherwise.
         """
         T = self.T
         bin_dphi = 1.0 / self.proflen
@@ -420,13 +466,36 @@ class pfd(object):
         else:
             return True
 
-    def time_vs_phase(self, p=None, pd=None, pdd=None, interp=0):
+    def time_vs_phase(
+        self,
+        p: float | None = None,
+        pd: float | None = None,
+        pdd: float | None = None,
+        interp: int = 0,
+    ) -> np.ndarray:
         """
-        time_vs_phase(p=*bestp*, pd=*bestpd*, pdd=*bestpdd*):
-            Return the 2D time vs. phase profiles shifted so that
-                the given period and period derivative are applied.
-                Use FFT-based interpolation if 'interp' is non-zero.
-                (NOTE: It is off by default as in prepfold!).
+        Return the 2D time-vs-phase profiles for a given period and derivatives.
+
+        The profiles are shifted so that the given period and period
+        derivatives are applied.
+
+        Parameters
+        ----------
+        p : float, optional
+            The period. If None (default), use the best value.
+        pd : float, optional
+            The period derivative. If None (default), use the best value.
+        pdd : float, optional
+            The period second derivative. If None (default), use the best
+            value.
+        interp : int, optional
+            If nonzero, use FFT-based interpolation (default 0, off, as in
+            prepfold).
+
+        Returns
+        -------
+        numpy.ndarray
+            The 2D time-vs-phase profiles, shape ``(npart, proflen)``.
         """
         # Cast to single precision and back to double precision to
         # emulate prepfold_plot.c, where parttimes is of type "float"
@@ -463,16 +532,37 @@ class pfd(object):
             subints = subints.flatten("C")[indices.astype("i8")]
         return subints
 
-    def adjust_period(self, p=None, pd=None, pdd=None, interp=0):
+    def adjust_period(
+        self,
+        p: float | None = None,
+        pd: float | None = None,
+        pdd: float | None = None,
+        interp: int = 0,
+    ) -> None:
         """
-        adjust_period(p=*bestp*, pd=*bestpd*, pdd=*bestpdd*):
-            Rotate (internally) the profiles so that they are adjusted to
-                the given period and period derivatives.  By default,
-                use the 'best' values as determined by prepfold's seaqrch.
-                This should orient all of the profiles so that they are
-                almost identical to what you see in a prepfold plot which
-                used searching.  Use FFT-based interpolation if 'interp'
-                is non-zero.  (NOTE: It is off by default, as in prepfold!)
+        Rotate the profiles (in-place) to a given period and derivatives.
+
+        By default, use the 'best' values as determined by prepfold's
+        search. This should orient all of the profiles so that they are
+        almost identical to what you see in a prepfold plot that used
+        searching.
+
+        Parameters
+        ----------
+        p : float, optional
+            The period. If None (default), use the best value.
+        pd : float, optional
+            The period derivative. If None (default), use the best value.
+        pdd : float, optional
+            The period second derivative. If None (default), use the best
+            value.
+        interp : int, optional
+            If nonzero, use FFT-based interpolation (default 0, off, as in
+            prepfold).
+
+        Returns
+        -------
+        None
         """
         if self.fold_pow == 1.0:
             bestp = self.bary_p1
@@ -534,11 +624,24 @@ class pfd(object):
         # Save current p, pd, pdd
         self.curr_p1, self.curr_p2, self.curr_p3 = p, pd, pdd
 
-    def combine_profs(self, new_npart, new_nsub):
+    def combine_profs(self, new_npart: int, new_nsub: int) -> np.ndarray | None:
         """
-        combine_profs(self, new_npart, new_nsub):
-            Combine intervals and/or subbands together and return a new
-                array of profiles.
+        Combine intervals and/or subbands together into a new profile array.
+
+        Parameters
+        ----------
+        new_npart : int
+            The new number of intervals. Must be a divisor of the current
+            number of intervals.
+        new_nsub : int
+            The new number of subbands. Must be a divisor of the current
+            number of subbands.
+
+        Returns
+        -------
+        numpy.ndarray or None
+            The combined profiles, shape ``(new_npart, new_nsub, proflen)``,
+            or None if `new_npart`/`new_nsub` are not valid divisors.
         """
         if self.npart % new_npart:
             print("Warning!  The new number of intervals (%d) is not a" % new_npart)
@@ -571,11 +674,18 @@ class pfd(object):
                 newprofs[ii][0] = np.add.reduce(self.profs[ii * dp : (ii + 1) * dp, 0])
         return newprofs
 
-    def kill_intervals(self, intervals):
+    def kill_intervals(self, intervals) -> None:
         """
-        kill_intervals(intervals):
-            Set all the subintervals (internally) from the list of
-                subintervals to all zeros, effectively 'killing' them.
+        Zero out (in-place) a list of intervals, effectively 'killing' them.
+
+        Parameters
+        ----------
+        intervals : sequence of int
+            The indices of the intervals to zero out.
+
+        Returns
+        -------
+        None
         """
         self.killed_intervals = []
         for part in intervals:
@@ -586,11 +696,18 @@ class pfd(object):
         self.varprof = self.calc_varprof()
         self.sumprof = self.profs.sum(0).sum(0)
 
-    def kill_subbands(self, subbands):
+    def kill_subbands(self, subbands) -> None:
         """
-        kill_subbands(subbands):
-            Set all the profiles (internally) from the list of
-                subbands to all zeros, effectively 'killing' them.
+        Zero out (in-place) a list of subbands, effectively 'killing' them.
+
+        Parameters
+        ----------
+        subbands : sequence of int
+            The indices of the subbands to zero out.
+
+        Returns
+        -------
+        None
         """
         self.killed_subbands = []
         for sub in subbands:
@@ -601,10 +718,20 @@ class pfd(object):
         self.varprof = self.calc_varprof()
         self.sumprof = self.profs.sum(0).sum(0)
 
-    def plot_sumprof(self, device="/xwin", **kwargs):
+    def plot_sumprof(self, device: str = "/xwin", **kwargs) -> None:
         """
-        plot_sumprof(self, device='/xwin', **kwargs):
-            Plot the dedispersed and summed profile.
+        Plot the dedispersed and summed profile.
+
+        Parameters
+        ----------
+        device : str, optional
+            The PGPLOT device (default "/xwin").
+        **kwargs
+            Additional keyword arguments passed to ``Pgplot.plotxy``.
+
+        Returns
+        -------
+        None
         """
         if "subdelays" not in self.__dict__:
             print("Dedispersing first...")
@@ -615,11 +742,20 @@ class pfd(object):
             normprof, labx="Phase Bins", laby="Normalized Flux", device=device, **kwargs
         )
 
-    def greyscale(self, array2d, **kwargs):
+    def greyscale(self, array2d: np.ndarray, **kwargs) -> None:
         """
-        greyscale(array2d, **kwargs):
-            Plot a 2D array as a greyscale image using the same scalings
-                as in prepfold.
+        Plot a 2D array as a greyscale image, using prepfold's scalings.
+
+        Parameters
+        ----------
+        array2d : numpy.ndarray
+            The 2D array to plot.
+        **kwargs
+            Additional keyword arguments passed to ``Pgplot.plot2d``.
+
+        Returns
+        -------
+        None
         """
         # Use the same scaling as in prepfold_plot.c
         global_max = np.maximum.reduce(np.maximum.reduce(array2d))
@@ -629,13 +765,28 @@ class pfd(object):
         array2d = (array2d - min_parts[:, np.newaxis]) / np.fabs(global_max)
         Pgplot.plot2d(array2d, image="antigrey", **kwargs)
 
-    def plot_intervals(self, phasebins="All", device="/xwin", **kwargs):
+    def plot_intervals(
+        self,
+        phasebins: str | tuple[int, int] = "All",
+        device: str = "/xwin",
+        **kwargs,
+    ) -> None:
         """
-        plot_intervals(self, phasebins='All', device='/xwin', **kwargs):
-            Plot the subband-summed profiles vs time.  Restrict
-                the bins in the plot to the (low:high) slice defined
-                by the phasebins option if it is a tuple (low,high)
-                instead of the string 'All'.
+        Plot the subband-summed profiles versus time.
+
+        Parameters
+        ----------
+        phasebins : str or tuple of (int, int), optional
+            If a ``(low, high)`` tuple, restrict the plotted bins to that
+            slice. If "All" (default), plot all bins.
+        device : str, optional
+            The PGPLOT device (default "/xwin").
+        **kwargs
+            Additional keyword arguments passed to :meth:`greyscale`.
+
+        Returns
+        -------
+        None
         """
         if "subdelays" not in self.__dict__:
             print("Dedispersing first...")
@@ -660,13 +811,28 @@ class pfd(object):
             **kwargs,
         )
 
-    def plot_subbands(self, phasebins="All", device="/xwin", **kwargs):
+    def plot_subbands(
+        self,
+        phasebins: str | tuple[int, int] = "All",
+        device: str = "/xwin",
+        **kwargs,
+    ) -> None:
         """
-        plot_subbands(self, phasebins='All', device='/xwin', **kwargs):
-            Plot the interval-summed profiles vs subband.  Restrict
-                the bins in the plot to the (low:high) slice defined
-                by the phasebins option if it is a tuple (low,high)
-                instead of the string 'All'.
+        Plot the interval-summed profiles versus subband.
+
+        Parameters
+        ----------
+        phasebins : str or tuple of (int, int), optional
+            If a ``(low, high)`` tuple, restrict the plotted bins to that
+            slice. If "All" (default), plot all bins.
+        device : str, optional
+            The PGPLOT device (default "/xwin").
+        **kwargs
+            Additional keyword arguments passed to :meth:`greyscale`.
+
+        Returns
+        -------
+        None
         """
         if "subdelays" not in self.__dict__:
             print("Dedispersing first...")
@@ -693,11 +859,16 @@ class pfd(object):
             **kwargs,
         )
 
-    def calc_varprof(self):
+    def calc_varprof(self) -> float:
         """
-        calc_varprof(self):
-            This function calculates the summed profile variance of the
-                current pfd file.  Killed profiles are ignored.
+        Calculate the summed-profile variance of the current pfd.
+
+        Killed profiles (intervals and subbands) are ignored.
+
+        Returns
+        -------
+        float
+            The summed-profile variance.
         """
         varprof = 0.0
         submask = ~np.isin(np.arange(self.nsub), self.killed_subbands)
@@ -707,10 +878,28 @@ class pfd(object):
             varprof += self.stats[part, submask, 5].sum()
         return varprof
 
-    def calc_redchi2(self, prof=None, avg=None, var=None):
+    def calc_redchi2(
+        self,
+        prof: np.ndarray | None = None,
+        avg: float | None = None,
+        var: float | None = None,
+    ) -> float:
         """
-        calc_redchi2(self, prof=None, avg=None, var=None):
-            Return the calculated reduced-chi^2 of the current summed profile.
+        Return the reduced-chi^2 of the current (or a given) summed profile.
+
+        Parameters
+        ----------
+        prof : numpy.ndarray, optional
+            The profile to use. If None (default), use ``self.sumprof``.
+        avg : float, optional
+            The average to use. If None (default), use ``self.avgprof``.
+        var : float, optional
+            The variance to use. If None (default), use ``self.varprof``.
+
+        Returns
+        -------
+        float
+            The reduced-chi^2 (using the correlation-corrected DOF).
         """
         if "subdelays" not in self.__dict__:
             print("Dedispersing first...")
@@ -724,19 +913,50 @@ class pfd(object):
         # Note:  use the _corrected_ DOF for reduced chi^2 calculation
         return ((prof - avg) ** 2.0 / var).sum() / self.DOFcor
 
-    def calc_sigma(self):
+    def calc_sigma(self) -> float:
         """
-        calc_sigma(self):
-            Return the calculated sigma (equivalent gaussian sig) of the summed profile.
+        Return the equivalent-Gaussian sigma of the summed profile.
+
+        Returns
+        -------
+        float
+            The significance of the summed profile, in Gaussian sigma.
         """
         return chi2_sigma(self.calc_redchi2() * self.DOFcor, self.DOFcor)
 
-    def plot_chi2_vs_DM(self, loDM, hiDM, N=100, interp=0, device="/xwin", **kwargs):
+    def plot_chi2_vs_DM(
+        self,
+        loDM: float,
+        hiDM: float,
+        N: int = 100,
+        interp: int = 0,
+        device: str = "/xwin",
+        **kwargs,
+    ) -> tuple[np.ndarray, np.ndarray]:
         """
-        plot_chi2_vs_DM(self, loDM, hiDM, N=100, interp=0, device='/xwin', **kwargs):
-            Plot (and return) an array showing the reduced-chi^2 versus
-                DM (N DMs spanning loDM-hiDM).  Use sinc_interpolation
-                if 'interp' is non-zero.
+        Plot (and return) the reduced-chi^2 versus DM.
+
+        Parameters
+        ----------
+        loDM : float
+            The low end of the DM range.
+        hiDM : float
+            The high end of the DM range.
+        N : int, optional
+            The number of DMs spanning ``loDM``-``hiDM`` (default 100).
+        interp : int, optional
+            If nonzero, use sinc interpolation (default 0, off).
+        device : str, optional
+            The PGPLOT device (default "/xwin").
+        **kwargs
+            Additional keyword arguments passed to ``Pgplot.plotxy``.
+
+        Returns
+        -------
+        chis : numpy.ndarray
+            The reduced-chi^2 at each DM.
+        DMs : numpy.ndarray
+            The DMs that were tried.
         """
         # Sum the profiles in time
         sumprofs = self.profs.sum(0)
@@ -775,11 +995,21 @@ class pfd(object):
         )
         return (chis, DMs)
 
-    def plot_chi2_vs_sub(self, device="/xwin", **kwargs):
+    def plot_chi2_vs_sub(self, device: str = "/xwin", **kwargs) -> np.ndarray:
         """
-        plot_chi2_vs_sub(self, device='/xwin', **kwargs):
-            Plot (and return) an array showing the reduced-chi^2 versus
-                the subband number.
+        Plot (and return) the reduced-chi^2 versus subband number.
+
+        Parameters
+        ----------
+        device : str, optional
+            The PGPLOT device (default "/xwin").
+        **kwargs
+            Additional keyword arguments passed to ``Pgplot.plotxy``.
+
+        Returns
+        -------
+        numpy.ndarray
+            The reduced-chi^2 for each subband.
         """
         # Sum the profiles in each subband
         profs = self.profs.sum(0)
@@ -810,11 +1040,22 @@ class pfd(object):
         )
         return chis
 
-    def estimate_offsignal_redchi2(self, numtrials=20):
+    def estimate_offsignal_redchi2(self, numtrials: int = 20) -> float:
         """
-        estimate_offsignal_redchi2():
-            Estimate the reduced-chi^2 off of the signal based on randomly shifting
-                and summing all of the component profiles.
+        Estimate the off-signal reduced-chi^2.
+
+        The estimate is based on randomly shifting and summing all of the
+        component profiles.
+
+        Parameters
+        ----------
+        numtrials : int, optional
+            The number of random trials to average over (default 20).
+
+        Returns
+        -------
+        float
+            The mean off-signal reduced-chi^2.
         """
         redchi2s = []
         for count in range(numtrials):
@@ -826,17 +1067,32 @@ class pfd(object):
             redchi2s.append(self.calc_redchi2(prof=prof))
         return np.mean(redchi2s)
 
-    def adjust_fold_frequency(self, phasebins, profs=None, shiftsubs=False):
+    def adjust_fold_frequency(
+        self, phasebins: float, profs: np.ndarray | None = None, shiftsubs: bool = False
+    ) -> tuple[np.ndarray, float]:
         """
-        adjust_fold_frequency(phasebins, profs=None, shiftsubs=False):
-            Linearly shift the intervals by phasebins over the course of
-                the observation in order to change the apparent folding
-                frequency.  Return a 2D array containing the de-dispersed
-                profiles as a function of time (i.e. shape = (npart, proflen)),
-                                and the reduced chi^2 of the resulting summed profile.
-                If profs is not None, then use profs instead of self.profs.
-                                If shiftsubs is not False, then actually correct the subbands
-                                instead of a 2D projection of them.
+        Change the apparent folding frequency by shifting intervals in phase.
+
+        Linearly shifts the intervals by `phasebins` over the course of the
+        observation.
+
+        Parameters
+        ----------
+        phasebins : float
+            The total number of phase bins to shift over the whole
+            observation.
+        profs : numpy.ndarray, optional
+            The profiles to use instead of ``self.profs`` (default None).
+        shiftsubs : bool, optional
+            If True, correct the individual subbands instead of a 2D
+            projection of them (default False).
+
+        Returns
+        -------
+        profs : numpy.ndarray
+            The (dedispersed) profiles as a function of time.
+        redchi : float
+            The reduced-chi^2 of the resulting summed profile.
         """
         if "subdelays" not in self.__dict__:
             print("Dedispersing first...")
@@ -864,23 +1120,40 @@ class pfd(object):
     def dynamic_spectra(
         self,
         onbins,
-        combineints=1,
-        combinechans=1,
-        calibrate=True,
-        plot=True,
-        device="/xwin",
+        combineints: int = 1,
+        combinechans: int = 1,
+        calibrate: bool = True,
+        plot: bool = True,
+        device: str = "/xwin",
         **kwargs,
-    ):
+    ) -> np.ndarray:
         """
-        dynamic_spectra(onbins, combineints=1, combinechans=1,
-                        calibrate=True, plot=True, device='/xwin', **kwargs):
-            Return (and plot) the dynamic spectrum (DS) resulting
-                from the folds in the .pfd assuming that the pulsar
-                is 'on' during the bins specified in 'onbins' and
-                off elsewhere (ON-OFF).  If calibrate is True, the
-                DS will be (ON-OFF)/OFF.  combineints and combinechans
-                describe how many adjacent intervals or frequency
-                channels will be combined when making the DS.
+        Return (and plot) the dynamic spectrum from the folds in the .pfd.
+
+        Assumes the pulsar is 'on' during the bins specified in `onbins` and
+        off elsewhere, forming ON-OFF.
+
+        Parameters
+        ----------
+        onbins : sequence of int
+            The phase bins during which the pulsar is 'on'.
+        combineints : int, optional
+            The number of adjacent intervals to combine (default 1).
+        combinechans : int, optional
+            The number of adjacent frequency channels to combine (default 1).
+        calibrate : bool, optional
+            If True, the DS will be (ON-OFF)/OFF (default True).
+        plot : bool, optional
+            If True, plot the dynamic spectrum (default True).
+        device : str, optional
+            The PGPLOT device (default "/xwin").
+        **kwargs
+            Additional keyword arguments passed to :meth:`greyscale`.
+
+        Returns
+        -------
+        numpy.ndarray
+            The dynamic spectrum.
         """
         # Determine the indices of the off-pulse region
         indices = np.arange(self.proflen)

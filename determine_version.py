@@ -31,7 +31,8 @@ if len(sys.argv) > 1 and sys.argv[1] in ["-w", "--write"]:
                     f.write(f"  version: '{version}',\n")
                     continue
             f.write(line)
-    # Update the version info in meson.build and the python pyproject.toml files
+        f.truncate()
+    # Update the version info in the python pyproject.toml file
     with open("python/pyproject.toml", "r+") as f:
         ll = f.readlines()
         f.seek(0)
@@ -42,3 +43,16 @@ if len(sys.argv) > 1 and sys.argv[1] in ["-w", "--write"]:
                     f.write(f"version = '{version}'\n")
                     continue
             f.write(line)
+        f.truncate()
+    # Update the version info in the presto package __init__.py
+    with open("python/presto/__init__.py", "r+") as f:
+        ll = f.readlines()
+        f.seek(0)
+        for line in ll:
+            ls = line.split()
+            if len(ls) >= 2:
+                if ls[0]=="__version__":
+                    f.write(f"__version__ = '{version}'\n")
+                    continue
+            f.write(line)
+        f.truncate()
