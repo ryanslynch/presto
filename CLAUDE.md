@@ -135,3 +135,8 @@ Python entry-point scripts live in `bin/` (e.g. `DDplan.py`, `single_pulse_searc
   tool's interface (and to confirm a `.cli` edit worked after rebuild).
 - macOS builds need workarounds (linker flags, `fix_rpath_duplicates.py` install script); see
   the macOS section of `INSTALL.md`.
+- **Git workflow:** Scott is effectively the sole developer, so routine changes — bug fixes,
+  refactors, code replacements (e.g. the amoeba→GSL swap), doc updates, etc. — may be committed
+  **directly to `master`** without a branch or PR (this overrides the usual "branch off the
+  default branch first" default). Reserve feature branches and PRs for very large-scale changes,
+  or for work coming from other contributors. Still only commit when asked.
