@@ -207,9 +207,8 @@ get PRESTO into conda-forge.
 
 Ask Claude to examine files in `src`, `include`, `tests`, and in `python` to find things that
 can safely be removed. These should be things that have not been significantly touched in a
-a long while, are irrelevant because of other code, or are not used at all (like `showmulti`.
-I don't even remember what that is!). I would like to approve a list item by item for those
-things to be removed.
+a long while, are irrelevant because of other code. I would like to approve a list item by 
+item for those things to be removed.
 
 **[DONE]** `dftfold` (outdated, unused, no references elsewhere in the tree) was removed
 while doing the `.cli` Description/Author/SeeAlso pass below.
