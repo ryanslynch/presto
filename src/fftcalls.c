@@ -25,8 +25,11 @@ void read_wisdom(void)
                wisdomfilenm);
     } else {
         if (!fftwf_import_wisdom_from_file(wisdomfile))
-            printf("Warning:  '%s' is not up-to-date.\n"
-                   "          You should run 'makewisdom'.  See INSTALL.md.\n",
+            printf("Warning:  FFTW rejected the wisdom in '%s'.\n"
+                   "          It was likely written by a different FFTW build or\n"
+                   "          version than the one in use now (the wisdom cookie is\n"
+                   "          per-build).  Re-run 'makewisdom' with the same FFTW.\n"
+                   "          See INSTALL.md.\n",
                    wisdomfilenm);
         fclose(wisdomfile);
     }

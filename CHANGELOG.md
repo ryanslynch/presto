@@ -1,4 +1,14 @@
 ## Development (unreleased, since v5.3.1):
+ * Fixed spurious "FFTW wisdom not up-to-date" warnings in conda/pixi environments.  The
+   installed executables (and `libpresto`) now carry an RPATH to `<prefix>/<libdir>`, so they
+   load the same FFTW that ships in the install prefix instead of falling through the loader
+   cache to a possibly-different system `libfftw3f`.  Previously `makewisdom` could write wisdom
+   with one FFTW build while the tools (and the Python `_presto` extension, loaded via the conda
+   `python`'s own RPATH) read it with another; because FFTW's wisdom version cookie is
+   per-build, the mismatched reader rejected the file.  The absolute RPATH is rewritten to a
+   relocatable `$ORIGIN` form by conda-build on conda-forge.  Also reworded that FFTW-import
+   warning in `fftcalls.c`, which previously mislabeled any rejected wisdom as merely "not
+   up-to-date".
  * Removed the long-dead `python/binresponses/` directory (`monte_ffdot`, `monte_short`,
    `monte_sideb`, `montebinresp`).  Nothing referenced it, it was never part of the build, and
    the code relied on the Python-2-era `Numeric`, `mpi`, `miscutils`, and `Statistics` modules,

@@ -90,6 +90,19 @@ add_project_arguments(_global_c_args, language : 'c')
 presto_datadir = get_option('prefix') / get_option('datadir') / 'presto'
 add_project_arguments('-DPRESTO_DATADIR="' + presto_datadir + '"', language : 'c')
 
+# Bake an RPATH to the install libdir into libpresto and every installed
+# executable, so at runtime they load the FFTW (and other deps) that ship in
+# the install prefix rather than falling through the loader cache to a
+# possibly-different system copy.  This matters in conda/pixi environments,
+# where <prefix>/lib holds a libfftw3f of a different version than the system
+# one: makewisdom and the tools would otherwise write/read FFTW wisdom with
+# mismatched libraries, producing spurious "wisdom not up-to-date" warnings
+# (the wisdom version cookie is per-FFTW-build).  The absolute <prefix>/libdir
+# path is exactly right for a dev/pixi tree and, on conda-forge, is rewritten
+# to a relocatable $ORIGIN form by conda-build's binary-relocation step.  This
+# mirrors the absolute PRESTO_DATADIR baked in just above.
+presto_rpath = get_option('prefix') / get_option('libdir')
+
 # These next couple things are from the Scipy top-level meson.build
 if host_machine.system() == 'darwin'
   if cc.has_link_argument('-Wl,-ld_classic')
