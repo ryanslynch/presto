@@ -21,7 +21,7 @@ package:
 
 source:
   - url: https://github.com/scottransom/presto/archive/refs/tags/v{{ version }}.tar.gz
-    sha256: 0000000000000000000000000000000000000000000000000000000000000000  # TODO: fill after tagging
+    sha256: 352fc5967ef69ab37d235368a99ab18bf267cff9e34ad876368f15486d6de5aa
   # Vendored ERFA (no conda-forge feedstock).  Staged in a dedicated directory;
   # build.sh normalizes it into subprojects/erfa-{{ erfa_version }}/ where
   # subprojects/erfa.wrap expects it.  Keep this hash in sync with erfa.wrap.
