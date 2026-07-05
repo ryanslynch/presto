@@ -1,58 +1,61 @@
 import subprocess
 import sys
 
-# Determine the version info from git
-result = subprocess.run(
-    ["git", "describe", "--tags", "--long"], capture_output=True, text=True
-).stdout
-tag, nplus, commit = result.split("-")
 
-if len(sys.argv) > 1 and sys.argv[1] in ["-v", "--show"]:
-    print(f"Last tag: {tag}")
-    print(f"Number of commits since tag: {nplus}")
-    print(f"Commit object name: {commit[1:] if commit.startswith('g') else commit}")
+def get_git_version():
+    """Derive the version string from `git describe --tags --long`.
 
-# Strip a leading v if it is there
-tag = f"{tag[1:] if tag.startswith('v') else tag}"
+    Returns a plain tag (e.g. "6.0.0") when sitting exactly on a tag, or a PEP
+    440 development version (e.g. "6.0.0.dev12") when there are commits since
+    the last tag.
+    """
+    result = subprocess.run(
+        ["git", "describe", "--tags", "--long"], capture_output=True, text=True
+    ).stdout
+    tag, nplus, commit = result.split("-")
 
-# This should be a legal Python version format
-version = f"{tag}.dev{nplus}" if int(nplus) else tag
+    if "-v" in sys.argv or "--show" in sys.argv:
+        print(f"Last tag: {tag}")
+        print(f"Number of commits since tag: {nplus}")
+        print(f"Commit object name: {commit[1:] if commit.startswith('g') else commit}")
+
+    # Strip a leading v if it is there
+    tag = f"{tag[1:] if tag.startswith('v') else tag}"
+
+    # This should be a legal Python version format
+    return f"{tag}.dev{nplus}" if int(nplus) else tag
+
+
+def write_version(version):
+    """Stamp `version` into meson.build, pyproject.toml, and the package __init__."""
+    targets = [
+        ("meson.build", "version:", f"  version: '{version}',\n"),
+        ("python/pyproject.toml", "version", f"version = '{version}'\n"),
+        ("python/presto/__init__.py", "__version__", f"__version__ = '{version}'\n"),
+    ]
+    for path, key, replacement in targets:
+        with open(path, "r+") as f:
+            ll = f.readlines()
+            f.seek(0)
+            for line in ll:
+                ls = line.split()
+                if len(ls) >= 2 and ls[0] == key:
+                    f.write(replacement)
+                    continue
+                f.write(line)
+            # truncate() so a shorter version string can't leave stale bytes behind
+            f.truncate()
+
+
+# An explicit "--set X.Y.Z" (for a tagged release) overrides the git-derived
+# development version; otherwise the version comes from `git describe`.
+if "--set" in sys.argv:
+    version = sys.argv[sys.argv.index("--set") + 1]
+    version = version[1:] if version.startswith("v") else version
+else:
+    version = get_git_version()
+
 print(version)
 
-if len(sys.argv) > 1 and sys.argv[1] in ["-w", "--write"]:
-    # Update the version info in meson.build and the python pyproject.toml files
-    with open("meson.build", "r+") as f:
-        ll = f.readlines()
-        f.seek(0)
-        for line in ll:
-            ls = line.split()
-            if len(ls) >= 2:
-                if ls[0]=="version:":
-                    f.write(f"  version: '{version}',\n")
-                    continue
-            f.write(line)
-        f.truncate()
-    # Update the version info in the python pyproject.toml file
-    with open("python/pyproject.toml", "r+") as f:
-        ll = f.readlines()
-        f.seek(0)
-        for line in ll:
-            ls = line.split()
-            if len(ls) >= 2:
-                if ls[0]=="version":
-                    f.write(f"version = '{version}'\n")
-                    continue
-            f.write(line)
-        f.truncate()
-    # Update the version info in the presto package __init__.py
-    with open("python/presto/__init__.py", "r+") as f:
-        ll = f.readlines()
-        f.seek(0)
-        for line in ll:
-            ls = line.split()
-            if len(ls) >= 2:
-                if ls[0]=="__version__":
-                    f.write(f"__version__ = '{version}'\n")
-                    continue
-            f.write(line)
-        f.truncate()
+if "-w" in sys.argv or "--write" in sys.argv:
+    write_version(version)

@@ -1,4 +1,17 @@
-## Development (unreleased, since v5.3.1):
+## Development (unreleased, since v6.0.0):
+
+## Version 6.0.0:
+ * **First conda-forge release, and a major dependency cleanup.** PRESTO v6 no longer
+   requires the `$PRESTO` environment variable, no longer needs TEMPO at all (barycentering
+   is done in-process with ERFA, and polycos come from tempo2), and its compiled code is now
+   Fortran-free (FFTFIT is pure Python; the last Fortran least-squares solver moved to GSL).
+   Runtime data and man pages install into the prefix, so `man rfifind` and the pulsar
+   catalog work with no extra setup. Together these make PRESTO cleanly installable from
+   conda-forge (`conda install presto`).  See the bullets below for the individual changes.
+ * Added release/packaging infrastructure: a `RELEASE.md` checklist, a `--set X.Y.Z` mode for
+   `determine_version.py` (to stamp an explicit release version, not just the git-derived dev
+   one), and an in-repo conda-forge recipe (`conda-recipe/meta.yaml` + `build.sh`) that builds
+   both the C and Python halves and vendors ERFA (which has no conda-forge feedstock).
  * `prepfold` now prints a one-line hint when its optional Ghostscript-based `.png` conversion
    fails (previously it was skipped silently).  On recent Ubuntu the usual cause is the AppArmor
    `gs` profile, which blocks `gs` from reading/writing outside `$HOME`, `/tmp`, and `/var/tmp`

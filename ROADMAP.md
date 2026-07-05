@@ -254,9 +254,22 @@ removed too.
 
 This will be important for simplfying updates when PRESTO is on conda-forge
 
+**[DONE]** `RELEASE.md` documents the repeatable checklist (version stamp &rarr; CHANGELOG/README
+&rarr; tag &rarr; push &rarr; `gh release` &rarr; hash &rarr; conda-forge). `determine_version.py`
+gained a `--set X.Y.Z` mode to stamp an explicit release version (overriding the git-derived dev
+version) into the three files it keeps in sync.
+
 ### Develop scripts and recipes for getting PRESTO onto conda-forge
 
 When that is complete (and integration into conda-forge is imminent), we will tag v6.
+
+**[IN PROGRESS]** v6.0.0 is stamped/tagged, and a conda-forge recipe is kept in-repo under
+`conda-recipe/` (`meta.yaml` + `build.sh`). It builds both halves (meson for `libpresto`/tools,
+then `pip` for the Python package), vendoring the ERFA release tarball into
+`subprojects/erfa-2.0.1/` since ERFA has no conda-forge feedstock. First submission targets
+`linux-64` + `osx-64`; `osx-arm64` waits on a conda-forge `tempo2`. Remaining: get the
+`conda-forge/staged-recipes` PR reviewed and merged (creates `presto-feedstock`), after which
+the autotick bot handles version bumps.
 
 ## Nice-to-haves
 

@@ -6,6 +6,20 @@ PRESTO is a large suite of pulsar search and analysis software developed primari
 
 **PRESTO has discovered well over 1500 pulsars, including ~500 recycled and/or binary pulsars!**
 
+## Version 6.0.0:
+ * **PRESTO is now on conda-forge!** Install the whole suite (C tools + Python package) with
+   `conda install -c conda-forge presto` (or `pixi add presto`).
+ * The `PRESTO` environment variable is **no longer required** &mdash; runtime data (the pulsar
+   catalog, etc.) and man pages now install into the prefix and are found automatically.
+ * **TEMPO is no longer needed at all:** barycentering is done in-process with ERFA, and
+   polyco generation now uses tempo2.
+ * The compiled code is now **Fortran-free**: FFTFIT was rewritten in pure Python (NumPy/SciPy,
+   with a new `classic`/`aarchiba` selector in `get_TOAs.py`), and the last Fortran least-squares
+   solver was replaced by GSL.
+ * Vendored Numerical-Recipes/SLALIB/RANDLIB code replaced by GSL and ERFA; many Python modules
+   modernized (NumPy docstrings, type hints, NumPy 2.5 fixes); man pages fleshed out.
+ * The build uses meson (from v5); `pixi run build` drives a fully self-contained build.
+
 ## Version 5.3.1:
  * Turned on OpenMP linking for rfifind! Oops.
 
