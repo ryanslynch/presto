@@ -134,7 +134,9 @@ int main(int argc, char *argv[])
     num_threads = omp_get_max_threads();
 #endif
 
-    rfi **tmprfi_arr = (rfi **) malloc((num_threads) * sizeof(rfi *));
+    // calloc so the entries are NULL: with -nocompute they are never
+    // otherwise initialized, and the cleanup loop null-checks them.
+    rfi **tmprfi_arr = (rfi **) calloc(num_threads, sizeof(rfi *));
     int *tmpnumrfivect_arr = (int *) malloc((num_threads) * sizeof(int));
     int *tmpnumrfi_arr = (int *) malloc((num_threads) * sizeof(int));
 

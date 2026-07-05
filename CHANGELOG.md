@@ -1,4 +1,8 @@
 ## Development (unreleased, since v5.3.1):
+ * Fixed a `free(): invalid pointer` crash in `rfifind -nocompute` that occurred at exit, right
+   after printing "Done."  The per-thread `tmprfi_arr` was `malloc`ed but only initialized to
+   `NULL` inside the compute branch, so with `-nocompute` the cleanup loop's null-check ran on
+   uninitialized pointers and freed garbage.  It is now `calloc`ed.
  * Fixed spurious "FFTW wisdom not up-to-date" warnings in conda/pixi environments.  The
    installed executables (and `libpresto`) now carry an RPATH to `<prefix>/<libdir>`, so they
    load the same FFTW that ships in the install prefix instead of falling through the loader
