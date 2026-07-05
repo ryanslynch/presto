@@ -1,4 +1,9 @@
 ## Development (unreleased, since v5.3.1):
+ * `prepfold` now prints a one-line hint when its optional Ghostscript-based `.png` conversion
+   fails (previously it was skipped silently).  On recent Ubuntu the usual cause is the AppArmor
+   `gs` profile, which blocks `gs` from reading/writing outside `$HOME`, `/tmp`, and `/var/tmp`
+   (so folding in `/dev/shm` or a cluster scratch dir yields the `.ps` but no `.png`).  Added a
+   FAQ entry explaining the cause and the fixes.
  * Fixed a `free(): invalid pointer` crash in `rfifind -nocompute` that occurred at exit, right
    after printing "Done."  The per-thread `tmprfi_arr` was `malloc`ed but only initialized to
    `NULL` inside the compute branch, so with `-nocompute` the cleanup loop's null-check ran on

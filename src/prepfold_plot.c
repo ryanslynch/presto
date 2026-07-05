@@ -1317,8 +1317,16 @@ void prepfold_plot(prepfoldinfo * search, plotflags * flags, int xwin, float *pp
                         "> /dev/null 2>&1",
                         (int) strlen(search->pgdev) - 7, search->pgdev,
                         (int) strlen(search->pgdev) - 4, search->pgdev);
-                // The .png is just nice-to-have, so ignore any gs failure.
-                system(command);
+                // The .png is just nice-to-have, so a gs failure is not fatal:
+                // the .ps has already been written.  But print a one-line hint,
+                // since a common cause is Ubuntu's AppArmor 'gs' profile blocking
+                // reads/writes outside $HOME, /tmp, and /var/tmp (e.g. when
+                // running in /dev/shm or a cluster scratch dir).  See FAQ.md.
+                if (system(command)) {
+                    printf("\nNote: gs failed to render the .png (the .ps is "
+                           "fine).  On Ubuntu this is often the AppArmor 'gs' "
+                           "profile blocking non-home/non-tmp dirs; see FAQ.md.\n");
+                }
                 free(command);
             }
         }

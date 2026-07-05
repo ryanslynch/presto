@@ -1099,6 +1099,43 @@ solution -- see `tests/prepfold/multi_cands.txt`):
 
 -----------------
 
+### **My `prepfold` `.ps` plots are written fine, but the `.png` versions are missing (and I'm running in `/dev/shm` or some other scratch directory). Why?**
+
+`prepfold` writes its plot as a PostScript `.ps` file and then, as a nice-to-have
+extra, calls Ghostscript (`gs`) to render an anti-aliased `.png`. If `gs` is
+missing or fails, PRESTO quietly skips the `.png` (the all-important `.ps` has
+already been written), so a failed conversion looks like a silently missing
+`.png` with no error message.
+
+On recent **Ubuntu** systems (25.10 and later) this is almost always caused by
+the AppArmor confinement profile that now ships with the `ghostscript` package
+(`/etc/apparmor.d/gs`). That profile only lets `gs` read and write files under
+your home directory (and only with a whitelist of extensions -- `.ps` and
+`.png` are both fine), plus `/tmp` and `/var/tmp`. **Any other directory -- even
+one you own and have full write permission to -- is denied by the kernel**, so
+`gs` cannot read the `.ps` it was handed. This bites the common practice of
+running searches in `/dev/shm`, `/run/user/$UID`, or a cluster/HPC scratch mount
+like `/scratch`, `/data`, or an NFS/Lustre work area. You can confirm it with:
+
+    dmesg | grep 'apparmor.*DENIED.*gs'
+
+Note that this is *not* Ghostscript's own `-dSAFER` sandbox -- adding `-dNOSAFER`
+will not help, because the denial happens in the kernel (AppArmor) before `gs`
+runs. Options:
+
+- Run `prepfold` (or at least generate the plots) from your home directory,
+  `/tmp`, or `/var/tmp`, then move the results to scratch afterward.
+- Or, if you have root, add a local override that grants `gs` access to your
+  scratch area. The packaged profile ends with `include if exists <local/gs>`
+  exactly for this. For example, to allow `/dev/shm`, create
+  `/etc/apparmor.d/local/gs` containing `owner /dev/shm/** rw,` and reload with
+  `sudo apparmor_parser -r /etc/apparmor.d/gs`. This keeps the rest of the
+  confinement intact and survives package updates.
+- Or generate the `.png`s later, from an allowed directory, using the
+  `pfd2png.sh` script that ships with PRESTO (it runs the same `gs` command).
+
+-----------------
+
 ## De-dispersion or `prepdata`/`prepsubband` questions
 
 -----------------
