@@ -5,7 +5,7 @@
 #
 # This is the reference copy kept in the PRESTO source tree.  The authoritative
 # copy for the first submission lives in a fork of conda-forge/staged-recipes
-# under recipes/presto/.  Once the presto-feedstock exists, that feedstock's
+# under recipes/presto-pulsar/.  Once the presto-pulsar-feedstock exists, that feedstock's
 # recipe/ becomes authoritative and subsequent version bumps are handled by
 # conda-forge's regro-cf-autotick-bot (see RELEASE.md).
 #
@@ -16,7 +16,11 @@
 # machinery with no network access (see build.sh).
 
 package:
-  name: presto
+  # 'presto' is taken on bioconda by an unrelated tool (immcantation's
+  # immunology toolkit), and conda-forge shares that namespace, so this
+  # astronomy PRESTO is packaged as 'presto-pulsar'.  The Python import stays
+  # 'presto' and the command-line tool names are unchanged.
+  name: presto-pulsar
   version: {{ version }}
 
 source:
@@ -68,12 +72,15 @@ test:
     - presto
     - presto.presto
   commands:
-    - readfile 2>&1 | grep -qi usage       # [unix]
-    - accelsearch 2>&1 | grep -qi usage     # [unix]
+    # Run two tools with no args (they print their pyclig usage) to confirm the
+    # binaries run and resolve all their shared libs (pgplot, fftw, ...).
+    - readfile 2>&1 | grep -qi "raw data"
+    - accelsearch 2>&1 | grep -qi "acceleration search"
 
 about:
   home: https://github.com/scottransom/presto
   license: GPL-2.0-only AND BSD-3-Clause    # PRESTO is GPL-2; vendored ERFA is BSD-3
+  license_family: GPL2
   license_file:
     - COPYING
     - subprojects/erfa-{{ erfa_version }}/LICENSE

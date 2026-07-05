@@ -54,7 +54,7 @@ curl -sL https://github.com/scottransom/presto/archive/refs/tags/vX.Y.Z.tar.gz |
     packaged for it (tempo2 is only needed at runtime for `prepfold -timing` polycos).
   - Test the recipe offline with staged-recipes' `python build-locally.py` before opening
     the PR.
-- **Subsequent releases:** once `presto-feedstock` exists, conda-forge's
+- **Subsequent releases:** once `presto-pulsar-feedstock` exists, conda-forge's
   **regro-cf-autotick-bot** usually opens the version-bump PR automatically within a day of
   the GitHub release. Just review/merge it (bump `build: number: 0`, re-pin deps if needed).
   To do it manually, edit `recipe/meta.yaml`'s `version` + `sha256` in the feedstock and

@@ -7,7 +7,8 @@
    Fortran-free (FFTFIT is pure Python; the last Fortran least-squares solver moved to GSL).
    Runtime data and man pages install into the prefix, so `man rfifind` and the pulsar
    catalog work with no extra setup. Together these make PRESTO cleanly installable from
-   conda-forge (`conda install presto`).  See the bullets below for the individual changes.
+   conda-forge (`conda install -c conda-forge presto-pulsar` &mdash; the `presto` name is
+   taken on bioconda by an unrelated tool).  See the bullets below for the individual changes.
  * Added release/packaging infrastructure: a `RELEASE.md` checklist, a `--set X.Y.Z` mode for
    `determine_version.py` (to stamp an explicit release version, not just the git-derived dev
    one), and an in-repo conda-forge recipe (`conda-recipe/meta.yaml` + `build.sh`) that builds

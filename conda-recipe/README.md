@@ -18,6 +18,6 @@ checklist.
 
 ## After the feedstock exists
 
-Once `presto-feedstock` is created, its `recipe/meta.yaml` becomes authoritative and
+Once `presto-pulsar-feedstock` is created, its `recipe/meta.yaml` becomes authoritative and
 conda-forge's autotick bot proposes version bumps automatically. Keep this copy roughly in
 sync when the packaging itself changes (deps, build steps, vendored ERFA version).

@@ -268,7 +268,8 @@ When that is complete (and integration into conda-forge is imminent), we will ta
 then `pip` for the Python package), vendoring the ERFA release tarball into
 `subprojects/erfa-2.0.1/` since ERFA has no conda-forge feedstock. First submission targets
 `linux-64` + `osx-64`; `osx-arm64` waits on a conda-forge `tempo2`. Remaining: get the
-`conda-forge/staged-recipes` PR reviewed and merged (creates `presto-feedstock`), after which
+`conda-forge/staged-recipes` PR reviewed and merged (creates `presto-pulsar-feedstock`; the
+plain `presto` name is taken on bioconda by an unrelated tool), after which
 the autotick bot handles version bumps.
 
 ## Nice-to-haves

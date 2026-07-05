@@ -8,7 +8,9 @@ PRESTO is a large suite of pulsar search and analysis software developed primari
 
 ## Version 6.0.0:
  * **PRESTO is now on conda-forge!** Install the whole suite (C tools + Python package) with
-   `conda install -c conda-forge presto` (or `pixi add presto`).
+   `conda install -c conda-forge presto-pulsar` (or `pixi add presto-pulsar`).  (The conda
+   package is `presto-pulsar` because the plain `presto` name is taken on bioconda by an
+   unrelated tool; the Python import is still `presto`.)
  * The `PRESTO` environment variable is **no longer required** &mdash; runtime data (the pulsar
    catalog, etc.) and man pages now install into the prefix and are found automatically.
  * **TEMPO is no longer needed at all:** barycentering is done in-process with ERFA, and
