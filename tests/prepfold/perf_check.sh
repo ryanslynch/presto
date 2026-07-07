@@ -7,7 +7,7 @@
 #                   pass and optimize loop parallelize over candidates, so with
 #                   ncand >= ncpus the cores are fully used.
 cd "$(dirname "$0")" || exit 2
-export PATH="/home/rlynch/sandboxes/presto/build/src:$PATH"
+export PATH="$(pwd)/../../build/src:$PATH"
 COMMON="-noxwin -noscales -nooffsets -nosearch -fine -n 64 -nsub 64"
 DATA=Ter5_080912_short2bits.fits
 P=8.66430621957513e-3

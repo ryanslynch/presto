@@ -8,8 +8,8 @@
 # (ncpus=4) output directly against the single-prepfold .bestprof files left by
 # prepfold_multi_tests.sh, proving "parallel multi == N singles" directly.
 cd "$(dirname "$0")" || exit 2
-export PATH="/home/rlynch/sandboxes/presto/build/src:$PATH"
 _SCRIPT_DIR="$(pwd)"
+export PATH="${_SCRIPT_DIR}/../../build/src:$PATH"
 COMMON="-noxwin -noscales -nooffsets -nosearch -fine -n 64"
 DATA=Ter5_080912_short2bits.fits
 SUBS="Ter5_080912_DM242.30.sub??"

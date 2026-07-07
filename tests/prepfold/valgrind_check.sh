@@ -13,7 +13,7 @@
 #   3. helgrind, ncpus=2  : data races (note: libgomp produces known false
 #                           positives; we grep for races in OUR sources)
 cd "$(dirname "$0")" || exit 2
-export PATH="/home/rlynch/sandboxes/presto/build/src:$PATH"
+export PATH="$(pwd)/../../build/src:$PATH"
 DATA=Ter5_080912_short2bits.fits
 # short slice keeps instrumented runtime reasonable; still >1 block per part
 SLICE="-start 0.0 -end 0.15 -npart 8"

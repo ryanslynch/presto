@@ -21,6 +21,22 @@ _SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 LOG=multi_output.txt
 : > "$LOG"
 
+# The binaries under test.  Without this a fresh shell finds no prepfold at
+# all: every fold dies with "command not found" into $LOG and the compares
+# then silently "pass" on stale output files from an earlier build.
+export PATH="${_SCRIPT_DIR}/../../build/src:$PATH"
+command -v prepfold_multi > /dev/null 2>&1 && command -v prepfold > /dev/null 2>&1 || {
+    echo "ERROR: prepfold/prepfold_multi not found (build with: ninja -C build)"
+    exit 2
+}
+
+fold() {        # run a fold command, logging output and trapping failures
+    "$@" >> "$LOG" 2>&1 || {
+        echo "  ERROR: '$1' exited nonzero (see $LOG)"
+        FAILED=1
+    }
+}
+
 # Spin parameters shared by every candidate (must match the *_cands.txt files).
 P=8.66430621957513e-3
 PD=-5.01154755640048e-11
@@ -53,8 +69,8 @@ SUBS="Ter5_080912_DM242.30.sub??"
 # --- RAWDATA: prepfold_multi (one pass) vs 3 single prepfold runs -------------
 echo "RAWDATA equivalence (PSRFITS, 3 DMs in one pass):"
 t0=$(date +%s.%N)
-prepfold_multi $COMMON -nsub 64 -candfile "${_SCRIPT_DIR}/multi_cands.txt" \
-    $DATA >> "$LOG" 2>&1
+fold prepfold_multi $COMMON -nsub 64 -candfile "${_SCRIPT_DIR}/multi_cands.txt" \
+    $DATA
 t1=$(date +%s.%N)
 multi_raw=$(elapsed "$t0" "$t1")
 
@@ -62,8 +78,8 @@ single_raw=0
 for pair in 238.30:candDM238 240.30:candDM240 242.30:candDM242; do
     dm=${pair%%:*}; nm=${pair##*:}
     s0=$(date +%s.%N)
-    prepfold $COMMON -nsub 64 -p $P -pd $PD -dm $dm -o m_single_$nm \
-        $DATA >> "$LOG" 2>&1
+    fold prepfold $COMMON -nsub 64 -p $P -pd $PD -dm $dm -o m_single_$nm \
+        $DATA
     s1=$(date +%s.%N)
     single_raw=$(awk "BEGIN{printf \"%.2f\", $single_raw + ($s1 - $s0)}")
     compare "Ter5_080912_short2bits_${nm}.pfd.bestprof" \
@@ -74,11 +90,11 @@ awk "BEGIN{ if ($multi_raw < $single_raw) print \"  READ-ONCE OK: multi run was 
 
 # --- insubs: prepfold_multi (one pass) vs 3 single prepfold runs --------------
 echo "insubs equivalence (PRESTO subbands, 3 residual DMs in one pass):"
-prepfold_multi $COMMON -candfile "${_SCRIPT_DIR}/multi_cands_sub.txt" \
-    $SUBS >> "$LOG" 2>&1
+fold prepfold_multi $COMMON -candfile "${_SCRIPT_DIR}/multi_cands_sub.txt" \
+    $SUBS
 for pair in 241.30:subDM241 242.30:subDM242 243.30:subDM243; do
     dm=${pair%%:*}; nm=${pair##*:}
-    prepfold $COMMON -p $P -pd $PD -dm $dm -o m_single_$nm $SUBS >> "$LOG" 2>&1
+    fold prepfold $COMMON -p $P -pd $PD -dm $dm -o m_single_$nm $SUBS
     compare "Ter5_080912_DM242.30_${nm}.pfd.bestprof" \
             "m_single_${nm}_8.66ms_Cand.pfd.bestprof"
 done
